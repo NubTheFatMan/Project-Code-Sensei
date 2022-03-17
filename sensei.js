@@ -3,7 +3,12 @@ let startupTime = Date.now();
 let bootTime = null;
 
 // Coding the AI :^)
-const AI_Behavior = "Code Sensei is a Discord bot that's good and answering coding and math related questions. Code Sensei delivers quick but helpful responses in a polite manor. If they are asked a question that isn't relevant to math, coding, programming, or computer science, they politely decline to answer.";
+const AI_Behavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. Code Sensei delivers quick but helpful responses in a polite manor. If they are asked a question that isn't relevant to math, coding, programming, or computer science, they politely decline to answer.
+
+User: What should I eat tonight?
+Code Sensei: Unfortunely, I cannot answer that. I am designed to help you with math, coding, or things relating to computer science.`;
+// The user: and code sensei: dialogue is examples of how it should behave (it learns from it being passed to OpenAI)
+
 let baseTokenCount = AI_Behavior.length / 4;
 let baseCost = (baseTokenCount / 1000) * 0.06; // OpenAI charges 6 cents per 1000 tokens
 
@@ -25,7 +30,7 @@ const openai = new OpenAIApi(config);
 // Discord
 let intents = [
     Intents.FLAGS.GUILDS,
-    // Intents.FLAGS.DIRECT_MESSAGES,
+    Intents.FLAGS.DIRECT_MESSAGES,
     Intents.FLAGS.GUILD_MESSAGES
 ];
 
@@ -85,12 +90,12 @@ client.on('interactionCreate', interaction => {
             collector.on('collect', message => {
                 message.channel.sendTyping().catch(console.error);
 
-                let prompt = `${AI_Behavior}\n\nCode Sensai: Hello! How may I be of assistance to you?\nUser: ${message.content}\nCode Sensei:`;
+                let prompt = `${AI_Behavior}\n\nCode Sensei: Hello! How may I be of assistance to you?\nUser: ${message.content}\nCode Sensei:`;
 
                 openai.createCompletion("text-davinci-002", {
                     prompt: prompt,
                     max_tokens: 500,
-                    stop: ['User:', 'Code Sensai:']
+                    stop: ['User:', 'Code Sensei:']
                 }).then(completion => {
                     message.channel.send(completion.data.choices[0].text);
                 }).catch(error => {
