@@ -25,7 +25,7 @@ const openai = new OpenAIApi(config);
 // Discord
 let intents = [
     Intents.FLAGS.GUILDS,
-    Intents.FLAGS.DIRECT_MESSAGES,
+    // Intents.FLAGS.DIRECT_MESSAGES,
     Intents.FLAGS.GUILD_MESSAGES
 ];
 
@@ -37,21 +37,6 @@ client.login(process.env.DISCORD_BOT_TOKEN);
 const rest = new REST({version: '9'}).setToken(process.env.DISCORD_BOT_TOKEN);
 
 let refreshed = new Set();
-
-const Commands = [
-    {
-        name: "about",
-        description: "Learn more about Code Sensei."
-    },
-    {
-        name: "chat",
-        description: "Code Sensei will start listening to your messages. Your messages must be 400 characters or less."
-    },
-    {
-        name: "stop",
-        description: "Lets Code Sensei know you no longer wish to chat. It will send a transcription of the conversation."
-    }
-];
 
 client.on('messageCreate', async message => {
     // Refresh slash commands
@@ -72,12 +57,49 @@ client.on('messageCreate', async message => {
     // Sending messages to OpenAI
 });
 
+const Commands = [
+    {
+        name: "about",
+        description: "Learn more about Code Sensei."
+    },
+    {
+        name: "chat",
+        description: "Code Sensei will start listening to your messages. Your messages must be 400 characters or less."
+    },
+    {
+        name: "stop",
+        description: "Lets Code Sensei know you no longer wish to chat. It will send a transcription of the conversation."
+    }
+];
+
 client.on('interactionCreate', interaction => {
     if (!interaction.isCommand()) return; 
 
     switch (interaction.commandName) {
         case "chat": 
-            interaction.reply("I'm listening! How may I be of assistance?");
+            interaction.reply("Hello! How may I be of assistance to you?");
+            console.log(`Chatting with ${interaction.user.tag} (${interaction.user.id}).`);
+            let filter = m => m.author.id === interaction.user.id && m.content !== "/stop";
+            let collector = interaction.channel.createMessageCollector({filter: filter, idle: 60000});
+
+            collector.on('collect', message => {
+                message.channel.sendTyping().catch(console.error);
+
+                let prompt = `${AI_Behavior}\n\nCode Sensai: Hello! How may I be of assistance to you?\nUser: ${message.content}\nCode Sensei:`;
+
+                openai.createCompletion("text-davinci-002", {
+                    prompt: prompt,
+                    max_tokens: 500,
+                    stop: ['User:', 'Code Sensai:']
+                }).then(completion => {
+                    message.channel.send(completion.data.choices[0].text);
+                }).catch(error => {
+                    console.log(error);
+                });
+            });
+            collector.on('end', collected => {
+
+            });
             break;
     }
 });
