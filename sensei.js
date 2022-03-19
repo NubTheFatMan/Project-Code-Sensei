@@ -3,10 +3,13 @@ let startupTime = Date.now();
 let bootTime = null;
 
 // Coding the AI :^)
-const AI_Behavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. Code Sensei delivers quick but helpful responses in a polite manor. If they are asked a question that isn't relevant to math, coding, programming, or computer science, they politely decline to answer.
+const AI_Behavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. Code Sensei responds in polite and complete sentences. If they are asked a question that isn't relevant to math, coding, programming, or computer science, they politely decline to answer.
 
 User: What should I eat tonight?
-Code Sensei: Unfortunely, I cannot answer that. I am designed to help you with math, coding, or things relating to computer science.`;
+Code Sensei: Unfortunely, I cannot answer that. I am designed to help you with math, coding, or things relating to computer science.
+
+User: What is 2 + 2?
+Code Sensei: 2 + 2 equals 4.`;
 // The user: and code sensei: dialogue is examples of how it should behave (it learns from it being passed to OpenAI)
 
 let baseTokenCount = AI_Behavior.length / 4;
@@ -15,10 +18,28 @@ let baseCost = (baseTokenCount / 1000) * 0.06; // OpenAI charges 6 cents per 100
 // Load environment variables
 require('dotenv').config();
 
-const {REST}                      = require('@discordjs/rest');
-const {Routes}                    = require('discord-api-types/v9');
-const {Client, Intents}           = require('discord.js');
-const {Configuration, OpenAIApi}  = require('openai');
+const {REST}                          = require('@discordjs/rest');
+const {Routes}                        = require('discord-api-types/v9');
+const {Client, Intents, MessageEmbed} = require('discord.js');
+const {Configuration, OpenAIApi}      = require('openai');
+const {readFile, writeFile, write}           = require('fs');
+
+// Load devs and testers
+let devs = [];
+readFile("./config/devs.txt", (err, data) => {
+    if (err) 
+        return console.error(err);
+
+    devs = data.toString().split(/ +/g);
+});
+
+let testers = [];
+readFile("./config/testers.txt", (err, data) => {
+    if (err) 
+        return console.error(err);
+
+    testers = data.toString().split(/ +/g);
+});
 
 // OpenAI
 const config = new Configuration({
@@ -43,23 +64,83 @@ const rest = new REST({version: '9'}).setToken(process.env.DISCORD_BOT_TOKEN);
 
 let refreshed = new Set();
 
-client.on('messageCreate', async message => {
-    // Refresh slash commands
-    if (message.guild && !refreshed.has(message.guild.id)) {
+client.on('guildCreate', async guild => {
+    // Create the slash commands
+    if (!refreshed.has(message.guild.id)) {
         try {
-            console.log(`Refreshing slash commands for guild ${message.guild.id}.`);
+            console.log(`Refreshing slash commands for guild ${guild.id}.`);
             await rest.put(
-                Routes.applicationGuildCommands(client.application.id, message.guild.id),
+                Routes.applicationGuildCommands(client.application.id, guild.id),
                 {body: Commands}
             );
-            console.log(`Successfully refreshed slash commands for ${message.guild.id}`);
-            refreshed.add(message.guild.id);
+            console.log(`Successfully refreshed slash commands for ${guild.id}`);
+            refreshed.add(guild.id);
         } catch (err) {
             console.error(err);
         }
     }
+});
 
-    // Sending messages to OpenAI
+client.on('messageCreate', async message => {
+    // Dev commands
+    if (!devs.includes(message.author.id))
+        return;
+
+    let args = message.content.split(/ +/g);
+    let cmd = args.shift().toLowerCase();
+
+    let prefix = "cs";
+    if (cmd.substring(0, prefix.length) !== prefix)
+        return;
+
+    let devGuild = message.guild.id == process.env.DEV_SERVER ? message.guild : await client.guilds.fetch(process.env.DEV_SERVER);
+
+    switch(cmd) {
+        case `${prefix}addtester`: {
+            let id = args.shift();
+            if (testers.includes(id)) 
+                return message.reply('Already a tester.');
+
+            let member;
+            try {
+                member = await devGuild.members.fetch(id);
+            } catch (err) {
+                message.reply(`Unable to find member on dev server.`);
+            }
+
+            if (member) 
+                member.roles.add(process.env.TESTER_ROLE).then(member => {
+                    testers.push(member.id);
+                    writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : "Success!"));
+                }).catch(err => message.reply(`Failed to assign tester role.\`\`\`\n${err.stack}\`\`\``));
+            else 
+                message.reply('Unable to find member on dev server.');
+        } break;
+
+        case `${prefix}removetester`: {
+            let id = args.shift();
+            if (!testers.includes(id))
+                return message.reply('Not a tester.');
+
+                let member;
+                try {
+                    member = await devGuild.members.fetch(id);
+                } catch (err) {
+                    message.reply(`Unable to find member on dev server.`);
+                }
+    
+                if (member) 
+                    member.roles.remove(process.env.TESTER_ROLE).then(member => {
+                        for (let i = 0; i < testers.length; i++) 
+                            if (testers[i] === member.id)
+                                testers.splice(i, 1);
+
+                        writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : "Success!"));
+                    }).catch(err => message.reply(`Failed to remove tester role.\`\`\`\n${err.stack}\`\`\``));
+                else 
+                    message.reply('Unable to find member on dev server.');
+        } break;
+    }
 });
 
 const Commands = [
@@ -74,6 +155,15 @@ const Commands = [
     {
         name: "stop",
         description: "Lets Code Sensei know you no longer wish to chat. It will send a transcription of the conversation."
+    },
+    {
+        name: "userlookup",
+        description: "Looks up some stuff on a user who has engaged with Code Sensei.",
+        options: [{
+            type: 6, // User
+            name: "user",
+            description: "The user to lookup."
+        }]
     }
 ];
 
@@ -105,26 +195,36 @@ client.on('interactionCreate', interaction => {
             collector.on('end', collected => {
 
             });
-            break;
+        break;
+    
+        case "userlookup":
+            let target = interaction.user.id;
+
+            let opts = interaction.options._hoistedOptions;
+            if (opts.length > 0) 
+                target = opts[0].value;
+
+            if (typeof target !== "string") {
+                interaction.reply("Failed to get the user you specified.");
+            } else {
+                interaction.guild.members.fetch(target).then(member => {
+                    let embed = new MessageEmbed();
+                    embed.setAuthor({name: member.displayName, iconURL: member.displayAvatarURL({dynamic: true})});
+                    embed.setDescription(`Displaying user information for ${member.user.tag} (${member.user.id})`);
+
+                    embed.addField("Access:", "standard");
+                    
+                    interaction.reply({embeds: [embed]});
+                }).catch(err => {
+                    interaction.reply("Failed to get the user you specified.");
+                });
+            }
+
+        break;
     }
 });
 
 client.on('ready', () => {
-    // The await rest.put errors since it's not top level :yahuh:
-    // client.guilds.cache.forEach((guild, id) => {
-    //     try {
-    //         console.log(`Refreshing slash commands for guild ${id}.`);
-    //         await rest.put(
-    //             Routes.applicationGuildCommands(client.application.id, id),
-    //             {body: Commands}
-    //         );
-    //         console.log(`Successfully refreshed slash commands for ${id}`);
-    //         refreshed.add(id);
-    //     } catch (err) {
-    //         console.error(err);
-    //     }
-    // });
-
     bootTime = Date.now() - startupTime;
     console.log(`Connected to Discord! Took ${bootTime}ms`);
 });
