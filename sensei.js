@@ -22,7 +22,16 @@ const {REST}                          = require('@discordjs/rest');
 const {Routes}                        = require('discord-api-types/v9');
 const {Client, Intents, MessageEmbed} = require('discord.js');
 const {Configuration, OpenAIApi}      = require('openai');
-const {readFile, writeFile, write}           = require('fs');
+const {readFile, writeFile}           = require('fs');
+
+// Emotes from my ServerHelper bot discord
+let emotes = {
+    approve: '<:approve:667547836719824931>',
+    caution: '<:caution:667547836749185036>',
+    information: '<:information:667547836467904523>',
+    dash: '<:dash:774145605449547797>',
+    deny: '<:deny:667547837017489409>'
+}
 
 // Load devs and testers
 let devs = [];
@@ -99,34 +108,34 @@ client.on('messageCreate', async message => {
         case `${prefix}addtester`: {
             let id = args.shift();
             if (testers.includes(id)) 
-                return message.reply('Already a tester.');
+                return message.reply(`${emotes.deny} Already a tester.`);
 
             let member;
             try {
                 member = await devGuild.members.fetch(id);
             } catch (err) {
-                message.reply(`Unable to find member on dev server.`);
+                message.reply(`${emotes.deny} Unable to find member on dev server.`);
             }
 
             if (member) 
                 member.roles.add(process.env.TESTER_ROLE).then(member => {
                     testers.push(member.id);
-                    writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : "Success!"));
-                }).catch(err => message.reply(`Failed to assign tester role.\`\`\`\n${err.stack}\`\`\``));
+                    writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
+                }).catch(err => message.reply(`${emotes.deny} Failed to assign tester role.\`\`\`\n${err.stack}\`\`\``));
             else 
-                message.reply('Unable to find member on dev server.');
+                message.reply(`${emotes.deny} Unable to find member on dev server.`);
         } break;
 
         case `${prefix}removetester`: {
             let id = args.shift();
             if (!testers.includes(id))
-                return message.reply('Not a tester.');
+                return message.reply(`${emotes.deny} Not currently a tester.`);
 
                 let member;
                 try {
                     member = await devGuild.members.fetch(id);
                 } catch (err) {
-                    message.reply(`Unable to find member on dev server.`);
+                    message.reply(`${emotes.deny} Unable to find member on dev server.`);
                 }
     
                 if (member) 
@@ -135,10 +144,10 @@ client.on('messageCreate', async message => {
                             if (testers[i] === member.id)
                                 testers.splice(i, 1);
 
-                        writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : "Success!"));
-                    }).catch(err => message.reply(`Failed to remove tester role.\`\`\`\n${err.stack}\`\`\``));
+                        writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
+                    }).catch(err => message.reply(`${emotes.deny} Failed to remove tester role.\`\`\`\n${err.stack}\`\`\``));
                 else 
-                    message.reply('Unable to find member on dev server.');
+                    message.reply(`${emotes.deny} Unable to find member on dev server.`);
         } break;
     }
 });
@@ -167,15 +176,30 @@ const Commands = [
     }
 ];
 
+// A user only needs to have one conversation at a time. 
+// We are going to map their message collectors to their id, 
+// so we can stop one if they try to start another one
+let collectors = new Map();
+
 client.on('interactionCreate', interaction => {
     if (!interaction.isCommand()) return; 
 
     switch (interaction.commandName) {
-        case "chat": 
+        case "chat": {
+            // Currently tester only. We need to verify :)
+            if (!testers.includes(interaction.user.id) && !devs.includes(interaction.user.id))
+                return interaction.reply(`${emotes.deny} I am currently only available to testers.`);
+
+            // End another message collector if they have one active
+            if (collectors.has(interaction.user.id)) 
+                collectors.get(interaction.user.id).stop();
+
             interaction.reply("Hello! How may I be of assistance to you?");
             console.log(`Chatting with ${interaction.user.tag} (${interaction.user.id}).`);
             let filter = m => m.author.id === interaction.user.id && m.content !== "/stop";
             let collector = interaction.channel.createMessageCollector({filter: filter, idle: 60000});
+
+            collectors.set(interaction.user.id, collector);
 
             collector.on('collect', message => {
                 message.channel.sendTyping().catch(console.error);
@@ -192,12 +216,21 @@ client.on('interactionCreate', interaction => {
                     console.log(error);
                 });
             });
-            collector.on('end', collected => {
-
+            collector.on('end', (collected, reason) => {
+                if (reason === "idle")
+                    collector.channel.send(`${emotes.information} No longer listening, conversation inactive.`);
             });
-        break;
+        } break;
+
+        case "stop": {
+            if (!collectors.has(interaction.user.id))
+                return interaction.reply(`${emotes.information} Got it, you no longer wish to chat!`);
+            
+            collectors.get(interaction.user.id).stop();
+            interaction.reply(`${emotes.information} Got it, you no longer wish to speak!`)
+        } break;
     
-        case "userlookup":
+        case "userlookup": {
             let target = interaction.user.id;
 
             let opts = interaction.options._hoistedOptions;
@@ -220,7 +253,7 @@ client.on('interactionCreate', interaction => {
                 });
             }
 
-        break;
+        } break;
     }
 });
 
