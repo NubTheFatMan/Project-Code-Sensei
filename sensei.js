@@ -3,7 +3,7 @@ let startupTime = Date.now();
 let bootTime = null;
 
 // Coding the AI :^)
-const AI_Behavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. Code Sensei responds in polite and complete sentences. If they are asked a question that isn't relevant to math, coding, programming, or computer science, they politely decline to answer.
+const AI_Behavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. Code Sensei responds in polite and complete sentences. If they are asked a question that isn't relevant to math, coding, or computer science, they politely decline to answer. The user will be unable to provide extra information if Code Sensei needs it, so Code Sensei will have have to ask them to restate their question with more detail. Code Sensei was created by NubTheFatMan#6969, however the actual AI was created by OpenAI.
 
 User: What should I eat tonight?
 Code Sensei: Unfortunely, I cannot answer that. I am designed to help you with math, coding, or things relating to computer science.
@@ -18,11 +18,11 @@ let baseCost = (baseTokenCount / 1000) * 0.06; // OpenAI charges 6 cents per 100
 // Load environment variables
 require('dotenv').config();
 
-const {REST}                          = require('@discordjs/rest');
-const {Routes}                        = require('discord-api-types/v9');
-const {Client, Intents, MessageEmbed} = require('discord.js');
-const {Configuration, OpenAIApi}      = require('openai');
-const {readFile, writeFile}           = require('fs');
+const {REST}                            = require('@discordjs/rest');
+const {Routes}                          = require('discord-api-types/v9');
+const {Client, Intents, MessageEmbed}   = require('discord.js');
+const {Configuration, OpenAIApi}        = require('openai');
+const {readFile, writeFile, appendFile} = require('fs');
 
 // Emotes from my ServerHelper bot discord
 let emotes = {
@@ -75,7 +75,7 @@ let refreshed = new Set();
 
 client.on('guildCreate', async guild => {
     // Create the slash commands
-    if (!refreshed.has(message.guild.id)) {
+    if (!refreshed.has(guild.id)) {
         try {
             console.log(`Refreshing slash commands for guild ${guild.id}.`);
             await rest.put(
@@ -91,6 +91,22 @@ client.on('guildCreate', async guild => {
 });
 
 client.on('messageCreate', async message => {
+    // Refresh slash commands. Will be removed when bot commands are about final
+    let guild = message.guild;
+    if (!refreshed.has(guild.id)) {
+        try {
+            console.log(`Refreshing slash commands for guild ${guild.id}.`);
+            await rest.put(
+                Routes.applicationGuildCommands(client.application.id, guild.id),
+                {body: Commands}
+            );
+            console.log(`Successfully refreshed slash commands for ${guild.id}`);
+            refreshed.add(guild.id);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    
     // Dev commands
     if (!devs.includes(message.author.id))
         return;
@@ -159,12 +175,17 @@ const Commands = [
     },
     {
         name: "chat",
-        description: "Code Sensei will start listening to your messages. Your messages must be 400 characters or less."
+        description: "Code Sensei will start listening to your messages. Your messages must be 400 characters or less.",
+        options: [{
+            type: 3,
+            name: "message",
+            description:"What to have the bot help you with."
+        }]
     },
-    {
-        name: "stop",
-        description: "Lets Code Sensei know you no longer wish to chat. It will send a transcription of the conversation."
-    },
+    // {
+    //     name: "stop",
+    //     description: "Lets Code Sensei know you no longer wish to chat. It will send a transcription of the conversation."
+    // },
     {
         name: "userlookup",
         description: "Looks up some stuff on a user who has engaged with Code Sensei.",
@@ -172,6 +193,15 @@ const Commands = [
             type: 6, // User
             name: "user",
             description: "The user to lookup."
+        }]
+    },
+    {
+        name: "feedback",
+        description: "Leave feedback for Code Sensei.",
+        options: [{
+            type: 3,
+            name: "message",
+            description:"Any issues or suggestions."
         }]
     }
 ];
@@ -191,44 +221,71 @@ client.on('interactionCreate', interaction => {
                 return interaction.reply(`${emotes.deny} I am currently only available to testers.`);
 
             // End another message collector if they have one active
-            if (collectors.has(interaction.user.id)) 
-                collectors.get(interaction.user.id).stop();
+            // if (collectors.has(interaction.user.id)) 
+            //     collectors.get(interaction.user.id).stop();
 
-            interaction.reply("Hello! How may I be of assistance to you?");
             console.log(`Chatting with ${interaction.user.tag} (${interaction.user.id}).`);
-            let filter = m => m.author.id === interaction.user.id && m.content !== "/stop";
-            let collector = interaction.channel.createMessageCollector({filter: filter, idle: 60000});
 
-            collectors.set(interaction.user.id, collector);
+            let opts = interaction.options._hoistedOptions;
+            if (!opts[0])
+                return interaction.reply(`${emotes.deny} Please fill in the \`message\` argument.`);
+            let input = opts[0].value;
 
-            collector.on('collect', message => {
-                message.channel.sendTyping().catch(console.error);
+            if (input.length > 500)
+                return interaction.reply(`${emotes.deny} Please keep your messages to a length of 500! Your message was ${message.content.length} characters long.`);
 
-                let prompt = `${AI_Behavior}\n\nCode Sensei: Hello! How may I be of assistance to you?\nUser: ${message.content}\nCode Sensei:`;
+            interaction.channel.sendTyping().catch(console.error);
 
-                openai.createCompletion("text-davinci-002", {
-                    prompt: prompt,
-                    max_tokens: 500,
-                    stop: ['User:', 'Code Sensei:']
-                }).then(completion => {
-                    message.channel.send(completion.data.choices[0].text);
-                }).catch(error => {
-                    console.log(error);
-                });
+            let prompt = `${AI_Behavior}\n\nCode Sensei: Hello! How may I be of assistance to you?\nUser: ${input}\nCode Sensei:`;
+
+            openai.createCompletion("text-davinci-002", {
+                prompt: prompt,
+                max_tokens: 200,
+                stop: ['User:', 'Code Sensei:'],
+                user: interaction.user.id
+            }).then(completion => {
+                interaction.reply(`Input: ${input}\n\nResponse: ${completion.data.choices[0].text}`);
+            }).catch(error => {
+                console.log(error);
             });
-            collector.on('end', (collected, reason) => {
-                if (reason === "idle")
-                    collector.channel.send(`${emotes.information} No longer listening, conversation inactive.`);
-            });
+
+            // interaction.reply("Hello! How may I be of assistance to you?");
+            // let filter = m => m.author.id === interaction.user.id && m.content !== "/stop";
+            // let collector = interaction.channel.createMessageCollector({filter: filter, idle: 60000});
+
+            // collectors.set(interaction.user.id, collector);
+
+            // collector.on('collect', message => {
+                // if (message.content.length > 500)
+                //     return message.channel.send(`${emotes.deny} Please keep your messages to a length of 500! Your message was ${message.content.length} characters long.`);
+
+                // message.channel.sendTyping().catch(console.error);
+
+                // let prompt = `${AI_Behavior}\n\nCode Sensei: Hello! How may I be of assistance to you?\nUser: ${message.content}\nCode Sensei:`;
+
+                // openai.createCompletion("text-davinci-002", {
+                //     prompt: prompt,
+                //     max_tokens: 200,
+                //     stop: ['User:', 'Code Sensei:'],
+                //     user: interaction.user.id
+                // }).then(completion => {
+                //     message.channel.send(completion.data.choices[0].text);
+                // }).catch(error => {
+                //     console.log(error);
+                // });
+            // });
+            // collector.on('end', (collected, reason) => {
+            //     if (reason === "idle")
+            //         collector.channel.send(`${emotes.information} No longer listening, conversation inactive.`);
+            // });
         } break;
 
-        case "stop": {
-            if (!collectors.has(interaction.user.id))
-                return interaction.reply(`${emotes.information} Got it, you no longer wish to chat!`);
+        // case "stop": {
+        //     if (collectors.has(interaction.user.id))
+        //         collectors.get(interaction.user.id).stop(); 
             
-            collectors.get(interaction.user.id).stop();
-            interaction.reply(`${emotes.information} Got it, you no longer wish to speak!`)
-        } break;
+        //     interaction.reply(`${emotes.information} Got it, you no longer wish to speak!`);
+        // } break;
     
         case "userlookup": {
             let target = interaction.user.id;
@@ -241,11 +298,16 @@ client.on('interactionCreate', interaction => {
                 interaction.reply("Failed to get the user you specified.");
             } else {
                 interaction.guild.members.fetch(target).then(member => {
+                    // Stuff to display on a user
+                    // Account access (standard, supporter, tester, developer)
+                    // Watchlist status (none, on watchlist, blacklisted)
+
                     let embed = new MessageEmbed();
                     embed.setAuthor({name: member.displayName, iconURL: member.displayAvatarURL({dynamic: true})});
                     embed.setDescription(`Displaying user information for ${member.user.tag} (${member.user.id})`);
 
-                    embed.addField("Access:", "standard");
+                    embed.addField("Access:", "standard | supporter | tester | developer");
+                    embed.addField("Watchlist:", "Not on it. | On watchlist. | Blacklisted.")
                     
                     interaction.reply({embeds: [embed]});
                 }).catch(err => {
