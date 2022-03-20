@@ -13,12 +13,12 @@ Code Sensei was written in JavaScript using node.js.`;
 // Load environment variables
 require('dotenv').config();
 
-const {REST}                            = require('@discordjs/rest');
-const {Routes}                          = require('discord-api-types/v9');
-const {Client, Intents, MessageEmbed}   = require('discord.js');
-const {Configuration, OpenAIApi}        = require('openai');
-const {encode}                          = require('gpt-3-encoder');
-const {readFile, writeFile, appendFile} = require('fs');
+const {REST}                                          = require('@discordjs/rest');
+const {Routes}                                        = require('discord-api-types/v9');
+const {Client, Intents, MessageEmbed}                 = require('discord.js');
+const {Configuration, OpenAIApi}                      = require('openai');
+const {encode}                                        = require('gpt-3-encoder');
+const {readFile, writeFile, appendFile, readFileSync} = require('fs');
 
 // Emotes from my ServerHelper bot discord
 let emotes = {
@@ -26,7 +26,9 @@ let emotes = {
     caution: '<:caution:667547836749185036>',
     information: '<:information:667547836467904523>',
     dash: '<:dash:774145605449547797>',
-    deny: '<:deny:667547837017489409>'
+    deny: '<:deny:667547837017489409>',
+    link: '<:link:776234610317066261>',
+    process: '<a:senseiprocess:955224936400699462>'
 }
 
 // Load devs and testers
@@ -36,6 +38,14 @@ readFile("./config/devs.txt", (err, data) => {
         return console.error(err);
 
     devs = data.toString().split(/ +/g);
+});
+
+let nolimits = [];
+readFile("./config/nolimits.txt", (err, data) => {
+    if (err) 
+        return console.error(err);
+
+    nolimits = data.toString().split(/ +/g);
 });
 
 let testers = [];
@@ -88,20 +98,22 @@ client.on('guildCreate', async guild => {
 
 client.on('messageCreate', async message => {
     // Refresh slash commands. Will be removed when bot commands are about final
-    let guild = message.guild;
-    if (!refreshed.has(guild.id)) {
-        try {
-            console.log(`Refreshing slash commands for guild ${guild.id}.`);
-            await rest.put(
-                Routes.applicationGuildCommands(client.application.id, guild.id),
-                {body: Commands}
-            );
-            console.log(`Successfully refreshed slash commands for ${guild.id}`);
-            refreshed.add(guild.id);
-        } catch (err) {
-            console.error(err);
-        }
-    }
+    // if (message.guild) {
+    //     let guild = message.guild;
+    //     if (!refreshed.has(guild.id)) {
+    //         try {
+    //             console.log(`Refreshing slash commands for guild ${guild.id}.`);
+    //             await rest.put(
+    //                 Routes.applicationGuildCommands(client.application.id, guild.id),
+    //                 {body: Commands}
+    //             );
+    //             console.log(`Successfully refreshed slash commands for ${guild.id}`);
+    //             refreshed.add(guild.id);
+    //         } catch (err) {
+    //             console.error(err);
+    //         }
+    //     }
+    // }
     
     // Dev commands
     if (!devs.includes(message.author.id))
@@ -114,28 +126,14 @@ client.on('messageCreate', async message => {
     if (cmd.substring(0, prefix.length) !== prefix)
         return;
 
-    let devGuild = message.guild.id == process.env.DEV_SERVER ? message.guild : await client.guilds.fetch(process.env.DEV_SERVER);
-
     switch(cmd) {
         case `${prefix}addtester`: {
             let id = args.shift();
             if (testers.includes(id)) 
                 return message.reply(`${emotes.deny} Already a tester.`);
 
-            let member;
-            try {
-                member = await devGuild.members.fetch(id);
-            } catch (err) {
-                message.reply(`${emotes.deny} Unable to find member on dev server.`);
-            }
-
-            if (member) 
-                member.roles.add(process.env.TESTER_ROLE).then(member => {
-                    testers.push(member.id);
-                    writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
-                }).catch(err => message.reply(`${emotes.deny} Failed to assign tester role.\`\`\`\n${err.stack}\`\`\``));
-            else 
-                message.reply(`${emotes.deny} Unable to find member on dev server.`);
+            testers.push(id);
+            writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
         } break;
 
         case `${prefix}removetester`: {
@@ -143,23 +141,40 @@ client.on('messageCreate', async message => {
             if (!testers.includes(id))
                 return message.reply(`${emotes.deny} Not currently a tester.`);
 
-                let member;
-                try {
-                    member = await devGuild.members.fetch(id);
-                } catch (err) {
-                    message.reply(`${emotes.deny} Unable to find member on dev server.`);
+            for (let i = 0; i < testers.length; i++) {
+                if (testers[i] === id) {
+                    testers.splice(i, 1);
+                    break;
                 }
-    
-                if (member) 
-                    member.roles.remove(process.env.TESTER_ROLE).then(member => {
-                        for (let i = 0; i < testers.length; i++) 
-                            if (testers[i] === member.id)
-                                testers.splice(i, 1);
+            }
 
-                        writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
-                    }).catch(err => message.reply(`${emotes.deny} Failed to remove tester role.\`\`\`\n${err.stack}\`\`\``));
-                else 
-                    message.reply(`${emotes.deny} Unable to find member on dev server.`);
+            writeFile("./config/testers.txt", testers.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save tester file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
+    
+        } break;
+
+        case `${prefix}nolimits`: {
+            let id = args.shift();
+            if (nolimits.includes(id)) 
+                return message.reply(`${emotes.deny} Already a tester.`);
+
+            nolimits.push(id);
+            writeFile("./config/nolimits.txt", nolimits.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
+        } break;
+
+        case `${prefix}limit`: {
+            let id = args.shift();
+            if (!nolimits.includes(id))
+                return message.reply(`${emotes.deny} Not currently a tester.`);
+
+            for (let i = 0; i < nolimits.length; i++) {
+                if (nolimits[i] === id) {
+                    nolimits.splice(i, 1);
+                    break;
+                }
+            }
+
+            writeFile("./config/nolimits.txt", nolimits.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
+    
         } break;
     }
 });
@@ -179,15 +194,6 @@ const Commands = [
         }]
     },
     {
-        name: "userlookup",
-        description: "Looks up some stuff on a user who has engaged with Code Sensei.",
-        options: [{
-            type: 6, // User
-            name: "user",
-            description: "The user to lookup."
-        }]
-    },
-    {
         name: "feedback",
         description: "Leave feedback for Code Sensei.",
         options: [{
@@ -195,17 +201,99 @@ const Commands = [
             name: "message",
             description:"Any issues or suggestions."
         }]
+    },
+    {
+        name: "tokens",
+        description: "See how many tokens you have."
     }
 ];
+
+let userdata = new Map();
+
+let baseUserData = {
+    tokens: 10000,
+    spentTokens: 0,
+    lastTokensUsed: 0,
+    watchlist: false,
+    blacklist: false,
+    blacklistReason: "",
+    firstTimeDM: false
+};
+
+let testerBonus = 40000; // Testers get an extra 40k, for a total of 50k tokens
+let costPerThousandTokens = 0.06; // Used to calculate how much money someone has spent :^)
+
+let toSave = new Set();
+function saveUser(id) {
+    if (!userdata.has(id)) return;
+    if (!toSave.has(id)) toSave.add(id);
+}
+
+setInterval(() => {
+    // Save info every 30 seconds
+    toSave.forEach(id => {
+        if (userdata.has(id))
+            writeFile(`./config/users/${id}.json`, JSON.stringify(userdata.get(id)), err => {if (err) console.error(err);});
+    });
+    toSave.clear();
+}, 30000);
 
 client.on('interactionCreate', interaction => {
     if (!interaction.isCommand()) return; 
 
     switch (interaction.commandName) {
         case "chat": {
+            // Verify user data
+            let userid = interaction.user.id;
+            let data;
+            if (!userdata.get(userid)) {
+                try {
+                    let file = readFileSync(`./config/users/${userid}.json`);
+                    data = JSON.parse(file.toString()); 
+
+                    userdata.set(userid, data);
+                } catch (err) {
+                    // The readfile should only error if the file doesn't exist, so we'll make new data
+                    data = {};
+                    
+                    Object.assign(data, baseUserData);
+            
+                    // If they are a tester, add some more tokens
+                    if (testers.includes(userid))
+                        data.tokens += testerBonus;
+            
+                    userdata.set(userid, data);
+                    
+                    writeFile(`./config/users/${userid}.json`, JSON.stringify(data), err => {if (err) console.error(err)});
+                }
+            } else {
+                data = userdata.get(userid);
+            }
+
+            if (data.blacklist)
+                return interaction.reply(`${emotes.deny} You are blacklisted from using me.`);
+
             // Currently tester only. We need to verify :)
             if (!testers.includes(interaction.user.id) && !devs.includes(interaction.user.id))
                 return interaction.reply(`${emotes.deny} I am currently only available to testers.`);
+
+            if (data.tokens <= 0) {
+                let bonusTime = new Date();
+                bonusTime.setMonth(bonusTime.getMonth() + 1);
+                bonusTime.setDate(1);
+                bonusTime.setHours(0);
+                bonusTime.setMinutes(0);
+                bonusTime.setSeconds(0);
+                bonusTime.setMilliseconds(0);
+
+                let embed = new MessageEmbed();
+                embed.setDescription(`${emotes.deny} Looks like you're out of tokens. You can go [here](https://google.com) and support ${client.user.username} for more, or wait till <t:${bonusTime.getTime() / 1000}> to receive some more.`);
+                embed.setColor(0xff6262);
+
+                interaction.reply({embeds: [embed]});
+
+                return;
+            }
 
             let opts = interaction.options._hoistedOptions;
             if (!opts[0])
@@ -217,67 +305,69 @@ client.on('interactionCreate', interaction => {
 
             appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nUser: ${input}`, err => {if (err) console.error(err);});
 
+            interaction.reply(emotes.process);
+
             // interaction.channel.sendTyping().catch(console.error);
 
             let prompt = `${AI_Behavior}\n\nUser: ${input}\nCode Sensei:`;
 
             openai.createCompletion("text-davinci-002", {
                 prompt: prompt,
-                max_tokens: 100,
+                max_tokens: 300,
                 stop: ['User:', 'Code Sensei:'],
                 user: interaction.user.id
             }).then(completion => {
                 let response = completion.data.choices[0].text;
 
+                if (devs.includes(interaction.user.id) || nolimits.includes(interaction.user.id))
+                    data.tokens = 1000000;
+
+                let beforeTokens = data.tokens;
+
                 let behaviorTokens = encode(prompt).length;
                 let answerTokens = encode(response).length;
                 let total = behaviorTokens + answerTokens;
 
-                let statsEmbed = new MessageEmbed();
-                // statsEmbed.setTitle("Response");
-                statsEmbed.setColor(0x0096ff);
-                statsEmbed.setDescription(`${emotes.information} Tokens: __${behaviorTokens}__ for input, __${answerTokens}__ for answer (__${total}__ total).\n${emotes.approve} You've used **${total}**/0 of your token quota.`);
+                data.tokens -= total;
+                let credited = 0;
+                if (data.tokens < 0) {
+                    credited -= data.tokens;
+                    data.tokens += credited;
+                }
 
-                // statsEmbed.addField("Input:", input);
-                // statsEmbed.addField("Response:", response);
+                data.spentTokens += total;
+                data.lastTokensUsed = total;
 
-                interaction.reply({content: response, embeds: [statsEmbed]});
-                appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response}`, err => {if (err) console.error(err)});
+                saveUser(interaction.user.id);
+
+                interaction.editReply(response);
+                
+                if (!data.firstTimeDM) {
+                    let msg = `Thank you for using ${client.user.username}!\nThe question you asked, "${input}" used **${total}** of your **${beforeTokens}** tokens, you now have __${data.tokens}__ tokens remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, but you can always use \`/tokens\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
+                    interaction.user.send(msg).catch(err => {
+                        interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
+                    });
+                    data.firstTimeDM = true;
+                }
+
+                appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response.trim()}`, err => {if (err) console.error(err)});
             }).catch(error => {
                 console.log(error);
-                interaction.reply(`${emotes.deny} Failed to process your request.`);
+                interaction.editReply(`${emotes.deny} Failed to process your request.`);
             });
-
         } break;
     
-        case "userlookup": {
-            let target = interaction.user.id;
+        case "tokens": {
+            if (!userdata.has(interaction.user.id))
+                return interaction.reply(`${emotes.information} Looks like you haven't used me before! You have **${baseUserData.tokens}** tokens.`);
+            
+            let data = userdata.get(interaction.user.id);
 
-            let opts = interaction.options._hoistedOptions;
-            if (opts.length > 0) 
-                target = opts[0].value;
+            let embed = new MessageEmbed();
+            embed.setColor(0x0096ff);
+            embed.setDescription(`${emotes.information} Your last question used **${data.lastTokensUsed}** tokens. You have __${data.tokens}__ tokens remaining.`);
 
-            if (typeof target !== "string") {
-                interaction.reply("Failed to get the user you specified.");
-            } else {
-                interaction.guild.members.fetch(target).then(member => {
-                    // Stuff to display on a user
-                    // Account access (standard, supporter, tester, developer)
-                    // Watchlist status (none, on watchlist, blacklisted)
-
-                    let embed = new MessageEmbed();
-                    embed.setAuthor({name: member.displayName, iconURL: member.displayAvatarURL({dynamic: true})});
-                    embed.setDescription(`Displaying user information for ${member.user.tag} (${member.user.id})`);
-
-                    embed.addField("Access:", "standard | supporter | tester | developer");
-                    embed.addField("Watchlist:", "Not on it. | On watchlist. | Blacklisted.")
-                    
-                    interaction.reply({embeds: [embed]});
-                }).catch(err => {
-                    interaction.reply("Failed to get the user you specified.");
-                });
-            }
-
+            interaction.reply({embeds: [embed]});
         } break;
     }
 });
