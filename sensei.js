@@ -3,14 +3,12 @@ let startupTime = Date.now();
 let bootTime = null;
 
 // Coding the AI :^)
-const AI_Behavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. Code Sensei responds in polite and complete sentences. If they are asked a question that isn't relevant to math, coding, or computer science, they politely decline to answer. The user will be unable to provide extra information if Code Sensei needs it, so Code Sensei will have have to ask them to restate their question with more detail. Code Sensei was created by NubTheFatMan#6969, however the actual AI was created by OpenAI.
-
-User: What should I eat tonight?
-Code Sensei: Unfortunely, I cannot answer that. I am designed to help you with math, coding, or things relating to computer science.
-
-User: What is 2 + 2?
-Code Sensei: 2 + 2 equals 4.`;
-// The user: and code sensei: dialogue is examples of how it should behave (it learns from it being passed to OpenAI)
+const AI_Behavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. 
+Code Sensei responds in polite and complete sentences. 
+If they are asked a question that isn't relevant to math, coding, or computer science, they politely decline to answer. 
+If the user asks an unclear question, Code Sensei asks for them to restate their question in more reasonable detail.
+Code Sensei was created by NubTheFatMan#6969, however the actual AI was created by OpenAI. 
+Code Sensei was written in JavaScript using node.js.`;
 
 let baseTokenCount = AI_Behavior.length / 4;
 let baseCost = (baseTokenCount / 1000) * 0.06; // OpenAI charges 6 cents per 1000 tokens
@@ -22,6 +20,7 @@ const {REST}                            = require('@discordjs/rest');
 const {Routes}                          = require('discord-api-types/v9');
 const {Client, Intents, MessageEmbed}   = require('discord.js');
 const {Configuration, OpenAIApi}        = require('openai');
+const {encode}                          = require('gpt-3-encoder');
 const {readFile, writeFile, appendFile} = require('fs');
 
 // Emotes from my ServerHelper bot discord
@@ -182,10 +181,6 @@ const Commands = [
             description:"What to have the bot help you with."
         }]
     },
-    // {
-    //     name: "stop",
-    //     description: "Lets Code Sensei know you no longer wish to chat. It will send a transcription of the conversation."
-    // },
     {
         name: "userlookup",
         description: "Looks up some stuff on a user who has engaged with Code Sensei.",
@@ -206,11 +201,6 @@ const Commands = [
     }
 ];
 
-// A user only needs to have one conversation at a time. 
-// We are going to map their message collectors to their id, 
-// so we can stop one if they try to start another one
-let collectors = new Map();
-
 client.on('interactionCreate', interaction => {
     if (!interaction.isCommand()) return; 
 
@@ -220,12 +210,6 @@ client.on('interactionCreate', interaction => {
             if (!testers.includes(interaction.user.id) && !devs.includes(interaction.user.id))
                 return interaction.reply(`${emotes.deny} I am currently only available to testers.`);
 
-            // End another message collector if they have one active
-            // if (collectors.has(interaction.user.id)) 
-            //     collectors.get(interaction.user.id).stop();
-
-            console.log(`Chatting with ${interaction.user.tag} (${interaction.user.id}).`);
-
             let opts = interaction.options._hoistedOptions;
             if (!opts[0])
                 return interaction.reply(`${emotes.deny} Please fill in the \`message\` argument.`);
@@ -234,58 +218,40 @@ client.on('interactionCreate', interaction => {
             if (input.length > 500)
                 return interaction.reply(`${emotes.deny} Please keep your messages to a length of 500! Your message was ${message.content.length} characters long.`);
 
-            interaction.channel.sendTyping().catch(console.error);
+            appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nUser: ${input}`, err => {if (err) console.error(err);});
 
-            let prompt = `${AI_Behavior}\n\nCode Sensei: Hello! How may I be of assistance to you?\nUser: ${input}\nCode Sensei:`;
+            // interaction.channel.sendTyping().catch(console.error);
+
+            let prompt = `${AI_Behavior}\n\nUser: ${input}\nCode Sensei:`;
 
             openai.createCompletion("text-davinci-002", {
                 prompt: prompt,
-                max_tokens: 200,
+                max_tokens: 100,
                 stop: ['User:', 'Code Sensei:'],
                 user: interaction.user.id
             }).then(completion => {
-                interaction.reply(`Input: ${input}\n\nResponse: ${completion.data.choices[0].text}`);
+                let response = completion.data.choices[0].text;
+
+                let behaviorTokens = encode(prompt).length;
+                let answerTokens = encode(response).length;
+                let total = behaviorTokens + answerTokens;
+
+                let statsEmbed = new MessageEmbed();
+                // statsEmbed.setTitle("Response");
+                statsEmbed.setColor(0x0096ff);
+                statsEmbed.setDescription(`${emotes.information} Tokens: __${behaviorTokens}__ for input, __${answerTokens}__ for answer (__${total}__ total).\n${emotes.approve} You've used **${total}**/0 of your token quota.`);
+
+                statsEmbed.addField("Input:", input);
+                statsEmbed.addField("Response:", response);
+
+                interaction.reply({embeds: [statsEmbed]});
+                appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response}`, err => {if (err) console.error(err)});
             }).catch(error => {
                 console.log(error);
+                interaction.reply(`${emotes.deny} Failed to process your request.`);
             });
 
-            // interaction.reply("Hello! How may I be of assistance to you?");
-            // let filter = m => m.author.id === interaction.user.id && m.content !== "/stop";
-            // let collector = interaction.channel.createMessageCollector({filter: filter, idle: 60000});
-
-            // collectors.set(interaction.user.id, collector);
-
-            // collector.on('collect', message => {
-                // if (message.content.length > 500)
-                //     return message.channel.send(`${emotes.deny} Please keep your messages to a length of 500! Your message was ${message.content.length} characters long.`);
-
-                // message.channel.sendTyping().catch(console.error);
-
-                // let prompt = `${AI_Behavior}\n\nCode Sensei: Hello! How may I be of assistance to you?\nUser: ${message.content}\nCode Sensei:`;
-
-                // openai.createCompletion("text-davinci-002", {
-                //     prompt: prompt,
-                //     max_tokens: 200,
-                //     stop: ['User:', 'Code Sensei:'],
-                //     user: interaction.user.id
-                // }).then(completion => {
-                //     message.channel.send(completion.data.choices[0].text);
-                // }).catch(error => {
-                //     console.log(error);
-                // });
-            // });
-            // collector.on('end', (collected, reason) => {
-            //     if (reason === "idle")
-            //         collector.channel.send(`${emotes.information} No longer listening, conversation inactive.`);
-            // });
         } break;
-
-        // case "stop": {
-        //     if (collectors.has(interaction.user.id))
-        //         collectors.get(interaction.user.id).stop(); 
-            
-        //     interaction.reply(`${emotes.information} Got it, you no longer wish to speak!`);
-        // } break;
     
         case "userlookup": {
             let target = interaction.user.id;
