@@ -10,9 +10,6 @@ If the user asks an unclear question, Code Sensei asks for them to restate their
 Code Sensei was created by NubTheFatMan#6969, however the actual AI was created by OpenAI. 
 Code Sensei was written in JavaScript using node.js.`;
 
-let baseTokenCount = AI_Behavior.length / 4;
-let baseCost = (baseTokenCount / 1000) * 0.06; // OpenAI charges 6 cents per 1000 tokens
-
 // Load environment variables
 require('dotenv').config();
 
@@ -241,10 +238,10 @@ client.on('interactionCreate', interaction => {
                 statsEmbed.setColor(0x0096ff);
                 statsEmbed.setDescription(`${emotes.information} Tokens: __${behaviorTokens}__ for input, __${answerTokens}__ for answer (__${total}__ total).\n${emotes.approve} You've used **${total}**/0 of your token quota.`);
 
-                statsEmbed.addField("Input:", input);
-                statsEmbed.addField("Response:", response);
+                // statsEmbed.addField("Input:", input);
+                // statsEmbed.addField("Response:", response);
 
-                interaction.reply({embeds: [statsEmbed]});
+                interaction.reply({content: response, embeds: [statsEmbed]});
                 appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response}`, err => {if (err) console.error(err)});
             }).catch(error => {
                 console.log(error);
