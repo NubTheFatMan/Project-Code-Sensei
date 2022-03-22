@@ -212,12 +212,13 @@ let userdata = new Map();
 
 let baseUserData = {
     tokens: 10000,
+    totalEarned: 10000,
     spentTokens: 0,
     lastTokensUsed: 0,
     watchlist: false,
     blacklist: false,
     blacklistReason: "",
-    firstTimeDM: false
+    firstTimeDM: false,
 };
 
 let testerBonus = 40000; // Testers get an extra 40k, for a total of 50k tokens
@@ -238,7 +239,31 @@ setInterval(() => {
     toSave.clear();
 }, 30000);
 
-client.on('interactionCreate', interaction => {
+let toxicThreshold = -0.355;
+function contentFilter(res) {
+    let label = res.choices[0].text;
+
+    if (label === "2") {
+        let logprobs = res.choices[0].logprobs.top_logprobs[0];
+
+        if (logprobs["2"] < toxicThreshold) {
+            let lp0 = logprobs["0"];
+            let lp1 = logprobs["1"];
+
+            if (lp0 !== undefined && lp1 !== undefined) {
+                if (lp0 >= lp1) label = "0";
+                else label = "1";
+            } else if (lp0 !== undefined) label = "0";
+            else if (lp1 !== undefined) label = "1";
+        }
+    }
+
+    if (label < 0 || label > 2) label = "2"; // So glad strings can act like numbers :^)
+
+    return label;
+}
+
+client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return; 
 
     switch (interaction.commandName) {
@@ -287,7 +312,7 @@ client.on('interactionCreate', interaction => {
                 bonusTime.setMilliseconds(0);
 
                 let embed = new MessageEmbed();
-                embed.setDescription(`${emotes.deny} Looks like you're out of tokens. You can go [here](https://google.com) and support ${client.user.username} for more, or wait till <t:${bonusTime.getTime() / 1000}> to receive some more.`);
+                embed.setDescription(`${emotes.deny} Looks like you're out of tokens. You can go [here](https://google.com/) and support ${client.user.username} for more, or wait till <t:${bonusTime.getTime() / 1000}> to receive some more.`);
                 embed.setColor(0xff6262);
 
                 interaction.reply({embeds: [embed]});
@@ -305,55 +330,76 @@ client.on('interactionCreate', interaction => {
 
             appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nUser: ${input}`, err => {if (err) console.error(err);});
 
-            interaction.reply(emotes.process);
-
-            // interaction.channel.sendTyping().catch(console.error);
+            let canSend = true;
+            try {
+                await interaction.reply(emotes.process);
+            } catch (err) { canSend = false; }
+            if (!canSend) return;
 
             let prompt = `${AI_Behavior}\n\nUser: ${input}\nCode Sensei:`;
 
-            openai.createCompletion("text-davinci-002", {
-                prompt: prompt,
-                max_tokens: 300,
-                stop: ['User:', 'Code Sensei:'],
-                user: interaction.user.id
-            }).then(completion => {
-                let response = completion.data.choices[0].text;
+            // OpenAI requires me to pass the user input through a content filter.
+            // https://beta.openai.com/docs/engines/content-filter
+            openai.createCompletion("content-filter-alpha", {
+                prompt: `<|endoftext|>${input}\n--\nLabel:`,
+                temperature: 0,
+                max_tokens: 1,
+                top_p: 0,
+                logprobs: 10
+            }).then(filterResults => {
+                let content = contentFilter(filterResults.data);
 
-                if (devs.includes(interaction.user.id) || nolimits.includes(interaction.user.id))
-                    data.tokens = 1000000;
-
-                let beforeTokens = data.tokens;
-
-                let behaviorTokens = encode(prompt).length;
-                let answerTokens = encode(response).length;
-                let total = behaviorTokens + answerTokens;
-
-                data.tokens -= total;
-                let credited = 0;
-                if (data.tokens < 0) {
-                    credited -= data.tokens;
-                    data.tokens += credited;
-                }
-
-                data.spentTokens += total;
-                data.lastTokensUsed = total;
-
-                saveUser(interaction.user.id);
-
-                interaction.editReply(response);
-                
-                if (!data.firstTimeDM) {
-                    let msg = `Thank you for using ${client.user.username}!\nThe question you asked, "${input}" used **${total}** of your **${beforeTokens}** tokens, you now have __${data.tokens}__ tokens remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, but you can always use \`/tokens\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
-                    interaction.user.send(msg).catch(err => {
-                        interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
+                if (content > 0) {
+                    interaction.editReply(`${emotes.deny} Your message has not passed the content filture. It has been determined to be against OpenAI's content policies.`);
+                } else {
+                    openai.createCompletion("text-davinci-002", {
+                        prompt: prompt,
+                        max_tokens: 300,
+                        stop: ['User:', 'Code Sensei:'],
+                        user: interaction.user.id
+                    }).then(completion => {
+                        let response = completion.data.choices[0].text;
+        
+                        if (devs.includes(interaction.user.id) || nolimits.includes(interaction.user.id))
+                            data.tokens = 1000000;
+        
+                        let beforeTokens = data.tokens;
+        
+                        let behaviorTokens = encode(prompt).length;
+                        let answerTokens = encode(response).length;
+                        let total = behaviorTokens + answerTokens;
+        
+                        data.tokens -= total;
+                        let credited = 0;
+                        if (data.tokens < 0) {
+                            credited -= data.tokens;
+                            data.tokens += credited;
+                        }
+        
+                        data.spentTokens += total;
+                        data.lastTokensUsed = total;
+        
+                        saveUser(interaction.user.id);
+        
+                        interaction.editReply(response);
+                        
+                        if (!data.firstTimeDM) {
+                            let msg = `Thank you for using ${client.user.username}!\nThe question you asked, "*${input}*" used **${total}** of your **${beforeTokens}** tokens, you now have __${data.tokens}__ tokens remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, with the exception of letting you know that you're running low. You can always use \`/tokens\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
+                            interaction.user.send(msg).catch(err => {
+                                interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
+                            });
+                            data.firstTimeDM = true;
+                        }
+        
+                        appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response.trim()}`, err => {if (err) console.error(err)});
+                    }).catch(error => {
+                        console.log(error);
+                        interaction.editReply(`${emotes.deny} Failed to process your request. Tokens have not been deducted.`);
                     });
-                    data.firstTimeDM = true;
                 }
-
-                appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response.trim()}`, err => {if (err) console.error(err)});
-            }).catch(error => {
-                console.log(error);
-                interaction.editReply(`${emotes.deny} Failed to process your request.`);
+            }).catch(err => {
+                console.error(err);
+                interaction.editReply(`${emotes.deny} Unable to process your message through the content filter.`);
             });
         } break;
     
