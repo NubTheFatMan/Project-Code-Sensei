@@ -176,6 +176,73 @@ client.on('messageCreate', async message => {
             writeFile("./config/nolimits.txt", nolimits.join(' '), err => message.reply(err ? `${emotes.deny} Failed to save file.\`\`\`\n${err.stack}\`\`\`` : `${emotes.approve} Success!`));
     
         } break;
+
+        case `${prefix}settokens`: {
+            let id = args.shift();
+
+            let data;
+            if (userdata.has(id)) {
+                data = userdata.get(id);
+            } else {
+                try {
+                    let file = readFileSync(`./config/users/${id}.json`);
+                    data = JSON.parse(file);
+                } catch (err) {
+                    message.reply(`${emotes.deny} No user found.`);
+                }
+            }
+
+            if (data) {
+                let value = args.shift();
+
+                let method = value[0];
+                value = Number(["+", "-"].includes(method) ? value.substring(1) : value);
+
+                if (typeof value !== 'number')
+                    return message.reply(`${emotes.deny} Invalid number`);
+
+                switch (method) {
+                    case "+": 
+                        data.tokens += value;
+                    break;
+
+                    case "-": 
+                        data.tokens -= value;
+                    break;
+
+                    default: 
+                        data.tokens = value;
+                    break;
+                }
+
+                if (!userdata.has(id))
+                    userdata.set(id, data);
+
+                saveUser(id);
+
+                message.reply(`${emotes.approve} User now has **${data.tokens}** tokens.`);
+            }
+        } break;
+
+        case `${prefix}tokens`: {
+            let id = args.shift();
+
+            let data;
+            if (userdata.has(id)) {
+                data = userdata.get(id);
+            } else {
+                try {
+                    let file = readFileSync(`./config/users/${id}.json`);
+                    data = JSON.parse(file);
+                } catch (err) {
+                    message.reply(`${emotes.deny} No user found.`);
+                }
+            }
+
+            if (data) {
+                message.reply(`${emotes.approve} User has **${data.tokens}** tokens.`);
+            }
+        } break;
     }
 });
 
@@ -389,6 +456,20 @@ client.on('interactionCreate', async interaction => {
                                 interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                             });
                             data.firstTimeDM = true;
+                        }
+
+                        if (credited > 0) {
+                            let bonusTime = new Date();
+                            bonusTime.setMonth(bonusTime.getMonth() + 1);
+                            bonusTime.setDate(1);
+                            bonusTime.setHours(0);
+                            bonusTime.setMinutes(0);
+                            bonusTime.setSeconds(0);
+                            bonusTime.setMilliseconds(0);
+                            let msg = `${emotes.information} Oh no! Looks like you ran out of tokens on your last question. You have been credited **${credited}** to complete the message, and are now left with **0** tokens. Tokens will be reset <t:${Math.round(bonusTime.getTime() / 1000)}>`;
+                            interaction.user.send(msg).catch(err => {
+                                interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
+                            });
                         }
         
                         appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response.trim()}`, err => {if (err) console.error(err)});
