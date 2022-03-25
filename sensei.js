@@ -54,27 +54,60 @@ client.on('ready', () => {
     console.log(`Connected to Discord! Took ${initTime}ms`);
 });
 
+global.loadFile = file => {
+    if (require.cache[require.resolve(file)]) 
+        delete require.cache[require.resolve(file)];
+
+    let plugin = require(file);
+    plugins.push(plugin);
+
+    if (plugin.type === "command") {
+        if (process.env.TEST_MODE) plugin.structure.name = "test-" + plugin.structure.name;
+        plugin.structure.version = 1;
+        commands.push(plugin);
+
+        if (!client.isReady()) commandTree.push(plugin.structure);
+        else {
+            let edited = false;
+            for (let cmd of commandTree) {
+                if (cmd.name === plugin.structure.name) {
+                    client.application.commands.edit(cmd.name, plugin.structure);
+                    edited = true; 
+                    break;
+                }
+            }
+
+            if (!edited) client.application.commands.create(plugin.structure);
+        }
+    } else if (plugin.type === "devCommand") {
+        let edited = false; 
+        for (let i = 0; i < devCommands.length; i++) {
+            let cmd = devCommands[i];
+            if (cmd.name === plugin.name) {
+                devCommands[i] = plugin;
+                edited = true;
+                break;
+            }
+        }
+
+        if (!edited) devCommands.push(plugin);
+    }
+
+    return plugin;
+}
+
 global.requireAll = dir => {
+    let required = 0;
     fs.readdirSync(dir).forEach(file => {
         let path = `${dir}/${file}`;
         if (fs.statSync(path).isDirectory()) {
             requireAll(path);
         } else if (path.endsWith(".js")) {
-            if (require.cache[require.resolve(path)]) 
-                delete require.cache[require.resolve(path)];
-            
-            let plugin = require(path);
-            plugins.push(plugin);
-            
-            if (plugin.type === "command") {
-                if (process.env.TEST_MODE) plugin.structure.name = "test-" + plugin.structure.name;
-                commands.push(plugin);
-                commandTree.push(plugin.structure);
-            } else if (plugin.type === "devCommand") {
-                devCommands.push(plugin);
-            }
+            loadFile(path);
+            required++;
         }
     });
+    return required;
 }
 requireAll("./plugins");
 
