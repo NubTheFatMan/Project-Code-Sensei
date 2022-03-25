@@ -14,9 +14,15 @@ setInterval(() => {
             if (err) console.error(err);
             else {
                 for (let file of files) {
-                    let data = JSON.parse(fs.readFileSync(`./config/users/${file}`));
-                    
                     let id = file.slice(0, -5); // remove .json
+
+                    let data;
+                    if (userData.has(id)) {
+                        data = userData.get(id);
+                    } else {
+                        data = JSON.parse(fs.readFileSync(`./config/users/${file}`));
+                    }
+                    
                     let minTokens = baseUserData.tokens;
                     if (testers.includes(id)) minTokens += testerTokenBonus;
 
@@ -29,9 +35,13 @@ setInterval(() => {
                             user.send(`${emotes.approve} New month, more tokens! You have been credited **${credited}** tokens, you now have **${data.tokens}**.`).catch(console.error);
                         }).catch(console.error);
 
-                        fs.writeFile(`./config/users/${file}`, JSON.stringify(data), err => {
-                            if (err) console.error(err);
-                        });
+                        if (userData.has(id)) {
+                            saveUser(id);
+                        } else {
+                            fs.writeFile(`./config/users/${file}`, JSON.stringify(data), err => {
+                                if (err) console.error(err);
+                            });
+                        }
                     }
                     
                 }
