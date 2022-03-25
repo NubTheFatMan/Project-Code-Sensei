@@ -7,10 +7,10 @@ client.on('messageCreate', (message) => {
     if (!message.content.startsWith(prefix)) return;
 
     let args = message.content.slice(prefix.length).trim().split(/ +/g);
-    let cmd = args.shift().toLowerCase();
+    let command = args.shift().toLowerCase();
 
     for (let cmd of devCommands) {
-        if (cmd.name === cmd) {
+        if (cmd.name === command) {
             try {
                 cmd.onCall(message, args);
             } catch (err) {
