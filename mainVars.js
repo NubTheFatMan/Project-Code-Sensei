@@ -1,10 +1,7 @@
 global.emotes = {
-    approve: '<:approve:667547836719824931>',
-    caution: '<:caution:667547836749185036>',
-    information: '<:information:667547836467904523>',
-    dash: '<:dash:774145605449547797>',
-    deny: '<:deny:667547837017489409>',
-    link: '<:link:776234610317066261>',
+    approve: '<:senseicheck:957067286957670410>',
+    deny: '<:senseicrossed:957067287020597318>',
+    information: '<:senseiinfo:957068917044563968>',
     process: '<a:senseiprocess:955224936400699462>'
 };
 
