@@ -1,6 +1,8 @@
 let logChannel;
 
 global.logToServer = (log) => {
+    if (testMode) return;
+
     if (!(logChannel instanceof Discord.TextChannel)) {
         client.channels.fetch(process.env.DEV_CONSOLE_CHANNEL).then(channel => {
             logChannel = channel;

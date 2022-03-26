@@ -2,6 +2,7 @@ global.emotes = {
     approve: '<:senseicheck:957067286957670410>',
     deny: '<:senseicrossed:957067287020597318>',
     information: '<:senseiinfo:957068917044563968>',
+    coin: '<:senseicoin:957126093545033768>',
     process: '<a:senseiprocess:955224936400699462>'
 };
 

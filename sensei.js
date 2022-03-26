@@ -44,21 +44,31 @@ global.client = new Discord.Client({intents: [
 global.applyGlobalCommands = () => {
     if (!client.isReady()) return;
 
-    client.application.commands.fetch().then(cmds => {
-        let edited = new Set();
-        cmds.forEach(cmd => {
-            if (commands.has(cmd.name)) {
-                cmd.edit(commands.get(cmd.name).structure);
-                edited.add(cmd.name);
-            }
-        });
+    let commandTree = [];
+    for (let [name, command] of commands) {
+        if (testMode) command.structure.name = `test-${command.structure.name}`;
+        commandTree.push(command.structure);
+    }
 
-        commands.forEach(cmd => {
-            if (edited.has(cmd.name)) return;
+    client.application.commands.set(commandTree);
+
+    // client.application.commands.fetch().then(cmds => {
+    //     let edited = new Set();
+    //     cmds.forEach(cmd => {
+    //         if (commands.has(cmd.name)) {
+    //             console.log(`Updating global command ${cmd.name}`);
+    //             cmd.edit(commands.get(cmd.name).structure);
+    //             edited.add(commands.get(cmd.name).structure.name);
+    //         }
+    //     });
+
+    //     commands.forEach(cmd => {
+    //         if (edited.has(cmd.name)) return;
     
-            client.application.commands.create(cmd.structure);
-        });
-    });
+    //         console.log(`Creating global command ${cmd.structure.name}`);
+    //         client.application.commands.create(cmd.structure);
+    //     });
+    // });
 
 }
 

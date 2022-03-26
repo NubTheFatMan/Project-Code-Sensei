@@ -18,6 +18,10 @@ global.saveUser = id => {
     toSave.add(id);
 }
 
+global.tokensToCoins = tokens => {
+    return (tokens / 100).toFixed(2);
+}
+
 global.getUserData = id => {
     if (!userData.has(id)) {
         try {

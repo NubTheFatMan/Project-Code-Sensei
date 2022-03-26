@@ -81,7 +81,7 @@ exports.onCall = (interaction, data) => {
                     interaction.editReply(response);
                     
                     if (!data.firstTimeDM) {
-                        let msg = `Thank you for using ${client.user.username}!\nThe question you asked, "*${snippet}*" used **${total}** of your **${beforeTokens}** tokens, you now have __${data.tokens}__ tokens remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, with the exception of letting you know that you're running low. You can always use \`/tokens\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
+                        let msg = `Thank you for using ${client.user.username}!\nThe question you asked, "${snippet}" used ${emotes.coin} ${tokensToCoins(total)} of your ${emotes.coin} ${tokensToCoins(beforeTokens)} Sense Coins, you now have ${emotes.coin} __${tokensToCoins(data.tokens)}__ coins remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, with the exception of letting you know that you're running low. You can always use \`/balance\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
                         interaction.user.send(msg).catch(err => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
@@ -89,7 +89,7 @@ exports.onCall = (interaction, data) => {
                     }
 
                     if (credited > 0) {
-                        let msg = `${emotes.information} Oh no! Looks like you ran out of tokens on your last question. You have been credited **${credited}** to complete the snippet, and are now left with **${data.tokens}** tokens. Tokens will be reset on <t:${Math.round(resetTime.getTime() / 1000)}>`;
+                        let msg = `${emotes.information} Oh no! Looks like you ran out of Sense Coins on your last question. You have been credited ${emotes.coin} ${tokensToCoins(credited)} to complete the snippet, and are now left with ${emotes.coin} ${tokensToCoins(data.tokens)} coins. Coins will be reset on <t:${Math.round(resetTime.getTime() / 1000)}>. If you want more coins now, visit [the coin shop](${tokenShop})!`;
                         interaction.user.send(msg).catch(err => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
