@@ -93,14 +93,20 @@ exports.onCall = (interaction, data) => {
                         });
                     }
     
-                    fs.appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response.trim()}`, err => {if (err) console.error(err)});
+                    fs.appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response.trim()}`, err => {
+                        if (err) {
+                            console.error(err);
+                            logToServer(`Failed to save transcript for ${interaction.user.id}.json\n${err.stack}`);
+                        }
+                    });
                 }).catch(error => {
                     console.error(error);
+                    logToServer(`Failed to process snippet for ${interaction.user.tag} (${interaction.user.id}):\nInput: ${snippet}\n${error.stack}`);
                     interaction.editReply(`${emotes.deny} Failed to process your request. Tokens have not been deducted.`);
                 });
             }
         }).catch(err => {
-            interaction.editReply(`${emotes.deny} Failed to pass your snippet through the content filter!\`\`\`\n${err}\`\`\``);
+            interaction.editReply(`${emotes.deny} Failed to pass your snippet through the content filter!\`\`\`\n${err.stack}\`\`\``);
         });
 
     }).catch(() => {}); // Catch is there so console doesn't say "Uncaught Promise Rejection". Should only run if no message perms

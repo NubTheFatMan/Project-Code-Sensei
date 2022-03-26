@@ -52,6 +52,7 @@ client.on('ready', () => {
     
     initTime = Date.now() - startupTime;
     console.log(`Connected to Discord! Took ${initTime}ms`);
+    logToServer(`Connected to Discord! Took ${initTime}ms`);
 });
 
 global.loadFile = file => {

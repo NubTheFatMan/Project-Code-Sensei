@@ -17,6 +17,7 @@ client.on('interactionCreate', interaction => {
             } catch (err) {
                 console.error(err);
                 interaction.reply(`${emotes.deny} An error occured while executing that command.\`\`\`\n${err.stack}\`\`\``);
+                logToServer(`${interaction.user.tag} used command ${interaction.commandName} but an error occured:\n${err.stack}`);
             }
             return;
         }
