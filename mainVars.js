@@ -34,3 +34,12 @@ If they are asked a question that isn't relevant to math, coding, or computer sc
 If the user asks an unclear question, Code Sensei asks for them to restate their question in more reasonable detail.
 Code Sensei was created by NubTheFatMan#6969, however the actual AI was created by OpenAI. 
 Code Sensei was written in JavaScript using node.js.`;
+
+global.userData = new Map();
+global.toSave = new Set();
+
+global.commands = new Map();
+global.devCommands = new Map();
+
+global.devs = fs.readFileSync("./config/devs.txt").toString().split(/ +/g);
+global.testers = fs.readFileSync("./config/testers.txt").toString().split(/ +/g);

@@ -15,7 +15,7 @@ setInterval(() => {
 
 global.saveUser = id => {
     if (!userData.has(id)) return;
-    toSave.add(id);
+    if (!toSave.has(id)) toSave.add(id);
 }
 
 global.tokensToCoins = tokens => {

@@ -14,21 +14,11 @@ global.OpenAI    = require('openai');
 global.gptEncode = require('gpt-3-encoder').encode;
 global.fs        = require('fs');
 
-// Load devs and testers
-global.devs = fs.readFileSync("./config/devs.txt").toString().split(/ +/g);
-global.testers = fs.readFileSync("./config/testers.txt").toString().split(/ +/g);
-
 // Load main variables
 require("./mainVars.js");
 
-global.userData = new Map();
-global.toSave = new Set();
-
-global.commands = new Map();
-global.devCommands = new Map();
-
 // OpenAI
-let aiConfig = new OpenAI.Configuration({
+global.aiConfig = new OpenAI.Configuration({
     apiKey: process.env.OPENAI_API_KEY
 });
 
@@ -51,29 +41,10 @@ global.applyGlobalCommands = () => {
     }
 
     client.application.commands.set(commandTree);
-
-    // client.application.commands.fetch().then(cmds => {
-    //     let edited = new Set();
-    //     cmds.forEach(cmd => {
-    //         if (commands.has(cmd.name)) {
-    //             console.log(`Updating global command ${cmd.name}`);
-    //             cmd.edit(commands.get(cmd.name).structure);
-    //             edited.add(commands.get(cmd.name).structure.name);
-    //         }
-    //     });
-
-    //     commands.forEach(cmd => {
-    //         if (edited.has(cmd.name)) return;
-    
-    //         console.log(`Creating global command ${cmd.structure.name}`);
-    //         client.application.commands.create(cmd.structure);
-    //     });
-    // });
-
 }
 
 client.on('ready', () => {
-    applyGlobalCommands();
+    // applyGlobalCommands();
     
     initTime = Date.now() - startupTime;
     console.log(`Connected to Discord! Took ${initTime}ms`);
