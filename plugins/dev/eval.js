@@ -6,7 +6,7 @@ exports.onCall = (message, args) => {
     let code = args.join(" ");
     try {
         let result = eval(code);
-        if (result === undefined || result === null) return message.reply(`${emotes.check} Evaluated successfully, no output.`);
+        if (result === undefined || result === null) return message.reply(`${emotes.approve} Evaluated successfully, no output.`);
 
         if (result instanceof Object || result instanceof Array) result = JSON.stringify(result, null, 2);
         else if (typeof result !== "string" && result !== undefined) result = result.toString();

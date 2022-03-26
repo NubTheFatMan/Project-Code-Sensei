@@ -4,8 +4,9 @@ client.on('interactionCreate', interaction => {
     let data = getUserData(interaction.user.id);
     if (data.blacklist) return interaction.reply(`${emotes.deny} You are blacklisted from using commands.`);
 
-    if (!testers.includes(interaction.user.id) && !devs.includes(interaction.user.id)) 
+    if (!testers.includes(interaction.user.id) && !devs.includes(interaction.user.id)) {
         return interaction.reply(`${emotes.deny} I am currently only available to testers. Interested? DM <@${devs.join('> <@')}>.`);
+    }
 
     let ran = false;
     
