@@ -2,6 +2,8 @@
 let startupTime = Date.now();
 global.initTime = null;
 
+global.testMode = false;
+
 console.log("starting...");
 
 // Load environment variables
@@ -22,9 +24,8 @@ require("./mainVars.js");
 global.userData = new Map();
 global.toSave = new Set();
 
-global.plugins = [];
-global.commands = [];
-global.devCommands = [];
+global.commands = new Map();
+global.devCommands = new Map();
 
 // OpenAI
 let aiConfig = new OpenAI.Configuration({
@@ -40,15 +41,29 @@ global.client = new Discord.Client({intents: [
     Discord.Intents.FLAGS.GUILD_MESSAGES
 ]});
 
-let commandTree = [];
-let storedCommandTree = fs.readFileSync("./config/commandTree.json");
-client.on('ready', () => {
-    if (commandTree !== storedCommandTree) {
-        client.application.commands.set(commandTree);
-        fs.writeFile("./config/commandTree.json", JSON.stringify(commandTree), err => {
-            if (err) console.error(err);    
+global.applyGlobalCommands = () => {
+    if (!client.isReady()) return;
+
+    client.application.commands.fetch().then(cmds => {
+        let edited = new Set();
+        cmds.forEach(cmd => {
+            if (commands.has(cmd.name)) {
+                cmd.edit(commands.get(cmd.name).structure);
+                edited.add(cmd.name);
+            }
         });
-    }
+
+        commands.forEach(cmd => {
+            if (edited.has(cmd.name)) return;
+    
+            client.application.commands.create(cmd.structure);
+        });
+    });
+
+}
+
+client.on('ready', () => {
+    applyGlobalCommands();
     
     initTime = Date.now() - startupTime;
     console.log(`Connected to Discord! Took ${initTime}ms`);
@@ -60,38 +75,11 @@ global.loadFile = file => {
         delete require.cache[require.resolve(file)];
 
     let plugin = require(file);
-    plugins.push(plugin);
 
     if (plugin.type === "command") {
-        if (process.env.TEST_MODE) plugin.structure.name = "test-" + plugin.structure.name;
-        plugin.structure.version = 1;
-        commands.push(plugin);
-
-        if (!client.isReady()) commandTree.push(plugin.structure);
-        else {
-            let edited = false;
-            for (let cmd of commandTree) {
-                if (cmd.name === plugin.structure.name) {
-                    client.application.commands.edit(cmd.name, plugin.structure);
-                    edited = true; 
-                    break;
-                }
-            }
-
-            if (!edited) client.application.commands.create(plugin.structure);
-        }
+        commands.set(plugin.structure.name, plugin);
     } else if (plugin.type === "devCommand") {
-        let edited = false; 
-        for (let i = 0; i < devCommands.length; i++) {
-            let cmd = devCommands[i];
-            if (cmd.name === plugin.name) {
-                devCommands[i] = plugin;
-                edited = true;
-                break;
-            }
-        }
-
-        if (!edited) devCommands.push(plugin);
+        devCommands.set(plugin.name, plugin);
     }
 
     return plugin;
@@ -112,4 +100,4 @@ global.requireAll = dir => {
 }
 requireAll("./plugins");
 
-client.login(process.env.TEST_MODE ? process.env.TEST_BOT_TOKEN : process.env.DISCORD_BOT_TOKEN);
+client.login(testMode ? process.env.TEST_BOT_TOKEN : process.env.DISCORD_BOT_TOKEN);

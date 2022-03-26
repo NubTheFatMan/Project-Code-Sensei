@@ -27,6 +27,8 @@ exports.onCall = (interaction, data) => {
         return;
     }
 
+    snippet = snippet.value;
+
     if (snippet.length > 500) {
         interaction.reply(`${emotes.deny} Snippet is too long!`);
         return;
@@ -106,7 +108,7 @@ exports.onCall = (interaction, data) => {
                 });
             }
         }).catch(err => {
-            interaction.editReply(`${emotes.deny} Failed to pass your snippet through the content filter!\`\`\`\n${err.stack}\`\`\``);
+            interaction.editReply(`${emotes.deny} Failed to pass your snippet through the content filter!\`\`\`\n${err}\`\`\``);
         });
 
     }).catch(() => {}); // Catch is there so console doesn't say "Uncaught Promise Rejection". Should only run if no message perms

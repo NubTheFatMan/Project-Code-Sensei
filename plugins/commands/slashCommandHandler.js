@@ -9,7 +9,7 @@ client.on('interactionCreate', interaction => {
 
     let ran = false;
     
-    for (let cmd of commands) {
+    for (let cmd of commands.values()) {
         if (cmd.structure.name === interaction.commandName) {
             try {
                 cmd.onCall(interaction, data);
