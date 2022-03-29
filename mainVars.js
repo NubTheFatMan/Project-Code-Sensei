@@ -28,6 +28,11 @@ global.baseUserData = {
 global.testerTokenBonus = 45000;
 global.tokenShop = "https://google.com/";
 
+global.becamePublicTimestamp = Date.now() + (1000 * 60 * 60 * 24 * 7);
+global.supportServer = "https://discord.gg/PjCTSzYSSH";
+
+global.github = "https://github.com/NubTheFatMan/Project-Code-Sensei";
+
 global.aiBehavior = `Code Sensei is a Discord bot that's good and answering coding and math related questions. 
 Code Sensei responds in polite and complete sentences. 
 If they are asked a question that isn't relevant to math, coding, or computer science, they politely decline to answer. 
@@ -43,3 +48,11 @@ global.devCommands = new Map();
 
 global.devs = fs.readFileSync("./config/devs.txt").toString().split(/ +/g);
 global.testers = fs.readFileSync("./config/testers.txt").toString().split(/ +/g);
+
+global.resetTime = new Date();
+resetTime.setMonth(resetTime.getMonth() + 1);
+resetTime.setDate(1);
+resetTime.setHours(0);
+resetTime.setMinutes(0);
+resetTime.setSeconds(0);
+resetTime.setMilliseconds(0);

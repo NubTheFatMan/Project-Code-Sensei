@@ -1,11 +1,3 @@
-global.resetTime = new Date();
-resetTime.setMonth(resetTime.getMonth() + 1);
-resetTime.setDate(1);
-resetTime.setHours(0);
-resetTime.setMinutes(0);
-resetTime.setSeconds(0);
-resetTime.setMilliseconds(0);
-
 setInterval(() => {
     if (Date.now() >= resetTime.getTime()) {
         resetTime.setMonth(resetTime.getMonth() + 1);

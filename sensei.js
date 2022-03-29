@@ -2,7 +2,7 @@
 let startupTime = Date.now();
 global.initTime = null;
 
-global.testMode = false;
+global.testMode = true;
 
 console.log("starting...");
 
@@ -36,7 +36,6 @@ global.applyGlobalCommands = () => {
 
     let commandTree = [];
     for (let [name, command] of commands) {
-        if (testMode) command.structure.name = `test-${command.structure.name}`;
         commandTree.push(command.structure);
     }
 
@@ -44,7 +43,7 @@ global.applyGlobalCommands = () => {
 }
 
 client.on('ready', () => {
-    // applyGlobalCommands();
+    applyGlobalCommands();
     
     initTime = Date.now() - startupTime;
     console.log(`Connected to Discord! Took ${initTime}ms`);
