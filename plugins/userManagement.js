@@ -42,3 +42,13 @@ global.getUserData = id => {
     
     return userData.get(id);
 }
+
+global.noTokens = () => {
+    if (!client.isReady()) return;
+
+    let embed = new Discord.MessageEmbed();
+    embed.setTitle(`${emotes.deny} You don't have enough tokens!`);
+    embed.setDescription(`Visit [${tokenShop}](the token shop) to buy more, or wait till <t:${Math.round(resetTime.getTime() / 1000)}> when they're reset!`);
+    embed.setColor(0xff6262);
+    return {embeds: [embed]};
+}

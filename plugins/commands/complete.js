@@ -6,19 +6,14 @@ exports.structure = {
     options: [{
         name: "snippet",
         description: "The snippet to complete.",
-        type: 3
+        type: 3,
+        required: true
     }]
 }
 
 exports.onCall = (interaction, data) => {
     if (data.tokens < 1) {
-        let embed = new Discord.MessageEmbed();
-        embed.setTitle(`${emotes.deny} You don't have enough tokens!`);
-        embed.setDescription(`Visit [${tokenShop}](the token shop) to buy more, or wait till <t:${Math.round(resetTime.getTime() / 1000)}> when they're reset!`);
-        embed.setColor(0xff6262);
-
-        interaction.reply({embeds: [embed]});
-        return;
+        return interaction.reply(noTokens());
     }
 
     let snippet = interaction.options.get("snippet");

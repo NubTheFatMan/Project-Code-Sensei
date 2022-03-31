@@ -1,4 +1,3 @@
-// Used for tracking bot init time
 let startupTime = Date.now();
 global.initTime = null;
 
