@@ -26,6 +26,7 @@ global.baseUserData = {
 };
 
 global.testerTokenBonus = 45000;
+global.devTokenBonus = 95000;
 global.tokenShop = "https://google.com/";
 
 global.becamePublicTimestamp = Date.now() + (1000 * 60 * 60 * 24 * 7);

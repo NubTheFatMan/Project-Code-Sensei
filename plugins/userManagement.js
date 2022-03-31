@@ -32,8 +32,13 @@ global.getUserData = id => {
 
             if (testers.includes(id)) {
                 data.tokens += testerTokenBonus;
-                data.totalTokens += testerTokenBonus;
             }
+
+            if (devs.includes(id)) {
+                data.tokens += devTokenBonus;
+            }
+            
+            data.totalTokens = data.tokens;
 
             userData.set(id, data);
             saveUser(id);

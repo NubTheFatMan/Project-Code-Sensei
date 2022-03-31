@@ -1,7 +1,7 @@
 exports.type = "devCommand";
 exports.name = "settokens";
 
-let validMethods = ["+", "-"];
+let validMethods = ["+", "-", "r"];
 
 exports.onCall = (message, args) => {
     let target = args.shift();
@@ -28,6 +28,15 @@ exports.onCall = (message, args) => {
             case "-": {
                 data.tokens -= amount;
                 data.spentTokens += amount;
+            } break;
+
+            case "r": {
+                data.tokens = baseUserData.tokens;
+                if (testers.includes(target)) data.tokens += testerTokenBonus;
+                if (devs.includes(target)) data.tokens += devTokenBonus;
+
+                data.spentTokens = 0;
+                data.totalTokens = data.tokens;
             } break;
 
             default: {
