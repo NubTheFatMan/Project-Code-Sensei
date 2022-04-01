@@ -27,7 +27,7 @@ global.baseUserData = {
 
 global.testerTokenBonus = 45000;
 global.devTokenBonus = 95000;
-global.tokenShop = "https://google.com/";
+global.tokenShop = "https://nubstoys.xyz/codesensei/";
 
 global.becamePublicTimestamp = Date.now() + (1000 * 60 * 60 * 24 * 7);
 global.supportServer = "https://discord.gg/PjCTSzYSSH";
@@ -51,9 +51,9 @@ global.devs = fs.readFileSync("./config/devs.txt").toString().split(/ +/g);
 global.testers = fs.readFileSync("./config/testers.txt").toString().split(/ +/g);
 
 global.resetTime = new Date();
-resetTime.setMonth(resetTime.getMonth() + 1);
-resetTime.setDate(1);
-resetTime.setHours(0);
-resetTime.setMinutes(0);
-resetTime.setSeconds(0);
 resetTime.setMilliseconds(0);
+resetTime.setSeconds(0);
+resetTime.setMinutes(0);
+resetTime.setHours(0);
+resetTime.setDate(1);
+resetTime.setMonth(resetTime.getMonth() + 1);

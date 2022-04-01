@@ -17,6 +17,7 @@ setInterval(() => {
                     
                     let minTokens = baseUserData.tokens;
                     if (testers.includes(id)) minTokens += testerTokenBonus;
+                    if (devs.includes(id)) minTokens += devTokenBonus;
 
                     if (data.tokens < minTokens) {
                         let credited = minTokens - data.tokens;
