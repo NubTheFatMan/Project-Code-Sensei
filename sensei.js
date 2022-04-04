@@ -1,7 +1,7 @@
 let startupTime = Date.now();
 global.initTime = null;
 
-global.testMode = true;
+global.testMode = false;
 
 console.log("starting...");
 
