@@ -5,7 +5,7 @@ exports.structure = {
     description: "Code Sensei will complete the snippet you provide. Great for asking questions.",
     options: [{
         name: "snippet",
-        description: "The snippet to complete.",
+        description: "The snippet to complete. Can't exceed 1000 characters in length.",
         type: 3,
         required: true
     }]
@@ -16,6 +16,11 @@ exports.onCall = (interaction, data) => {
         return interaction.reply(noTokens());
     }
 
+    if (Date.now() - data.lastAskedTimestamp > 1000) {
+        interaction.reply(`${emote.deny} You're asking too fast! Please don't spam me.`);
+        return;
+    }
+
     let snippet = interaction.options.get("snippet");
     if (!snippet) {
         interaction.reply(`${emotes.deny} You must provide a snippet to complete!`);
@@ -24,7 +29,7 @@ exports.onCall = (interaction, data) => {
 
     snippet = snippet.value;
 
-    if (snippet.length > 500) {
+    if (snippet.length > 1000) {
         interaction.reply(`${emotes.deny} Snippet is too long!`);
         return;
     }
@@ -47,7 +52,7 @@ exports.onCall = (interaction, data) => {
                 let prompt = `${aiBehavior}\n\nUser: ${snippet}\nCode Sensei:`;
                 openai.createCompletion("text-davinci-002", {
                     prompt: prompt,
-                    max_tokens: 300,
+                    max_tokens: 250,
                     stop: ['User:', 'Code Sensei:'],
                     user: interaction.user.id
                 }).then(completion => {
@@ -76,7 +81,7 @@ exports.onCall = (interaction, data) => {
                     interaction.editReply(response);
                     
                     if (!data.firstTimeDM) {
-                        let msg = `Thank you for using ${client.user.username}!\nThe question you asked, "${snippet}" used ${emotes.coin} ${tokensToCoins(total)} of your ${emotes.coin} ${tokensToCoins(beforeTokens)} Sense Coins, you now have ${emotes.coin} __${tokensToCoins(data.tokens)}__ coins remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, with the exception of letting you know that you're running low. You can always use \`/balance\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
+                        let msg = `Thank you for using Code Sensei!\nIn case you weren't aware, Code Sensei is a chatbot powered by OpenAI that is designed to help you with math, coding, or computer science related questions. Code Sensei is not perfect, and will sometimes decline to answer questions it thinks aren't related to the topics stated before, when it may actually be.\n\nThe question you asked, "${snippet}" used ${emotes.coin} ${tokensToCoins(total)} of your ${emotes.coin} ${tokensToCoins(beforeTokens)} Sense Coins, you now have ${emotes.coin} __${tokensToCoins(data.tokens)}__ coins remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, with the exception of letting you know that you're running low. You can always use \`/balance\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
                         interaction.user.send(msg).catch(err => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });

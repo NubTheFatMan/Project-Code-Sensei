@@ -1,7 +1,7 @@
 let startupTime = Date.now();
 global.initTime = null;
 
-global.testMode = false;
+global.testMode = true;
 
 console.log("starting...");
 
@@ -12,6 +12,7 @@ global.Discord   = require('discord.js');
 global.OpenAI    = require('openai');
 global.gptEncode = require('gpt-3-encoder').encode;
 global.fs        = require('fs');
+global.Jimp      = require('jimp');
 
 // Load main variables
 require("./mainVars.js");

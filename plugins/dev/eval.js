@@ -16,7 +16,6 @@ let oldLog = console.log;
 exports.onCall = (message, args) => {
     if (!args.length) return message.reply(`${emotes.deny} You must provide code to evaluate.`);
     let code = args.join(" ").replace('```js', '').replace('```', '');
-    // Temporarily change console.log() to log()
     console.log = log;
     try {
         let result = eval(code);
@@ -57,7 +56,7 @@ exports.onCall = (message, args) => {
             message.reply(`${emotes.deny} Output too large but unable to attach file. Evaluated without error.\n\`${err.toString().replace('DiscordAPIError: ', '')}\``).catch(console.error);
         });
     } catch (err) {
-        message.reply(`${emotes.deny} An error occured while evaluating that code.\`\`\`\n${err.stack}\`\`\``);
+        message.reply(`${emotes.deny} An error occured while evaluating that code.\`\`\`\n${err.stack}\`\`\``).catch(console.error);
     }
     console.log = oldLog;
 }
