@@ -8,7 +8,7 @@ setInterval(() => {
     
     if (toSave.size > 0){
         console.log(`Saved ${toSave.size} users.`);
-        logToServer(`Saved ${toSave.size} users.`);
+        // logToServer(`Saved ${toSave.size} users.`);
         toSave.clear();
     }
 }, 30000);

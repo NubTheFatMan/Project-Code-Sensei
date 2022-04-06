@@ -16,8 +16,9 @@ exports.onCall = (interaction, data) => {
         return interaction.reply(noTokens());
     }
 
-    if (Date.now() - data.lastAskedTimestamp > 1000) {
-        interaction.reply(`${emote.deny} You're asking too fast! Please don't spam me.`);
+    if (Date.now() - data.lastAskedTimestamp < 1000) {
+        interaction.reply(`${emotes.deny} You're asking too fast! Please don't spam me.`);
+        data.lastAskedTimestamp = Date.now();
         return;
     }
 

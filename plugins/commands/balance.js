@@ -9,7 +9,7 @@ let card;
 let pfpMask;
 let font;
 
-Jimp.read("./config/images/sense_card.png", (err, image) => {
+Jimp.read("./config/images/sense_card_slim.png", (err, image) => {
     if (err) throw err;
 
     card = image;  
@@ -43,14 +43,12 @@ exports.onCall = (interaction, data) => {
             }
 
             avatar.resize(70, 70);
-
             avatar.mask(pfpMask, 0, 0);
+
             image.blit(avatar, 12, 12);
 
-            image.print(font, 120, 9,   tokensToCoins(data.tokens));
-            image.print(font, 120, 49,  tokensToCoins(data.lastTokensUsed));
-            image.print(font, 44,  89,  tokensToCoins(data.totalTokens));
-            image.print(font, 44,  129, tokensToCoins(data.spentTokens));
+            image.print(font, 120, 9,  tokensToCoins(data.tokens));
+            image.print(font, 120, 49, tokensToCoins(data.lastTokensUsed));
 
             image.getBuffer(Jimp.MIME_PNG, (err, buffer) => {
                 if (err) {
