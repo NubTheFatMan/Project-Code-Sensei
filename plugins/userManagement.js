@@ -1,52 +1,52 @@
-setInterval(() => {
-    for (let user of toSave) {
-        if (!userData.has(user)) continue;
-        fs.writeFile(`./config/users/${user}.json`, JSON.stringify(userData.get(user)), err => {
-            if (err) console.error(err);
-        });   
-    }
+// setInterval(() => {
+//     for (let user of toSave) {
+//         if (!userData.has(user)) continue;
+//         fs.writeFile(`./config/users/${user}.json`, JSON.stringify(userData.get(user)), err => {
+//             if (err) console.error(err);
+//         });   
+//     }
     
-    if (toSave.size > 0){
-        console.log(`Saved ${toSave.size} users.`);
-        // logToServer(`Saved ${toSave.size} users.`);
-        toSave.clear();
-    }
-}, 30000);
+//     if (toSave.size > 0){
+//         console.log(`Saved ${toSave.size} users.`);
+//         // logToServer(`Saved ${toSave.size} users.`);
+//         toSave.clear();
+//     }
+// }, 30000);
 
-global.saveUser = id => {
-    if (!userData.has(id)) return;
-    if (!toSave.has(id)) toSave.add(id);
-}
+// global.saveUser = id => {
+//     if (!userData.has(id)) return;
+//     if (!toSave.has(id)) toSave.add(id);
+// }
 
 global.tokensToCoins = tokens => {
     return (tokens / 100).toFixed(2);
 }
 
-global.getUserData = id => {
-    if (!userData.has(id)) {
-        try {
-            userData.set(id, JSON.parse(fs.readFileSync(`./config/users/${id}.json`)));
-        } catch (err) {
-            let data = {};
-            Object.assign(data, baseUserData);
+// global.getUserData = id => {
+//     if (!userData.has(id)) {
+//         try {
+//             userData.set(id, JSON.parse(fs.readFileSync(`./config/users/${id}.json`)));
+//         } catch (err) {
+//             let data = {};
+//             Object.assign(data, baseUserData);
 
-            if (testers.includes(id)) {
-                data.tokens += testerTokenBonus;
-            }
+//             if (testers.includes(id)) {
+//                 data.tokens += testerTokenBonus;
+//             }
 
-            if (devs.includes(id)) {
-                data.tokens += devTokenBonus;
-            }
+//             if (devs.includes(id)) {
+//                 data.tokens += devTokenBonus;
+//             }
             
-            data.totalTokens = data.tokens;
+//             data.totalTokens = data.tokens;
 
-            userData.set(id, data);
-            saveUser(id);
-        }
-    }
+//             userData.set(id, data);
+//             saveUser(id);
+//         }
+//     }
     
-    return userData.get(id);
-}
+//     return userData.get(id);
+// }
 
 global.noTokens = () => {
     if (!client.isReady()) return;

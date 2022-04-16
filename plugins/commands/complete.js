@@ -76,8 +76,8 @@ exports.onCall = (interaction, data) => {
                     data.spentTokens += total;
                     data.lastTokensUsed = total;
                     data.lastAskedTimestamp = Date.now();
-    
-                    saveUser(interaction.user.id);
+
+                    let query = `UPDATE \`users\` SET \`tokens\` = ${data.tokens}, \`spentTokens\` = ${data.spentTokens}, \`totalTokens\` = ${data.totalTokens}, \`lastAskedTimestamp\` = ${data.lastAskedTimestamp}, \`lastTokensUsed\` = ${data.lastTokensUsed}`;
     
                     interaction.editReply(response);
                     
@@ -86,8 +86,17 @@ exports.onCall = (interaction, data) => {
                         interaction.user.send(msg).catch(err => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
-                        data.firstTimeDM = true;
+
+                        query += ", `firstTimeDM` = 1";
                     }
+
+                    query += ` WHERE \`userid\` = '${interaction.user.id}'`;
+                    database.query(query, err => {
+                        if (err) {
+                            console.log(err);
+                            interaction.channel.send(`${emotes.deny} An error occurred while saving your data.`);
+                        }
+                    })
 
                     if (credited > 0) {
                         let msg = `${emotes.information} Oh no! Looks like you ran out of Sense Coins on your last question. You have been credited ${emotes.coin} ${tokensToCoins(credited)} to complete the snippet, and are now left with ${emotes.coin} ${tokensToCoins(data.tokens)} coins. Coins will be reset on <t:${Math.round(resetTime.getTime() / 1000)}>. If you want more coins now, visit [the coin shop](${tokenShop})!`;
@@ -95,13 +104,6 @@ exports.onCall = (interaction, data) => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
                     }
-    
-                    fs.appendFile(`./config/transcripts/${interaction.user.id}.txt`, `\nCode Sensei: ${response.trim()}`, err => {
-                        if (err) {
-                            console.error(err);
-                            logToServer(`Failed to save transcript for ${interaction.user.id}.json\n${err.stack}`);
-                        }
-                    });
                 }).catch(error => {
                     console.error(error);
                     logToServer(`Failed to process snippet for ${interaction.user.tag} (${interaction.user.id}):\nInput: ${snippet}\n${error.stack}`);
