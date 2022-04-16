@@ -11,15 +11,17 @@ client.on('interactionCreate', interaction => {
 
             if (testers.includes(interaction.user.id)) 
                 data.tokens += testerTokenBonus;
+                data.totalTokens += testerTokenBonus;
             if (devs.includes(interaction.user.id)) 
                 data.tokens += devTokenBonus;
+                data.totalTokens += devTokenBonus;
         } else {
             data = result[0];
         }
 
         if (data.blacklisted) return interaction.reply(`${emotes.deny} You are blacklisted from using commands.`);
 
-        if (!testers.includes(interaction.user.id) && !devs.includes(interaction.user.id)) {
+        if (testMode && !testers.includes(interaction.user.id) && !devs.includes(interaction.user.id)) {
             return interaction.reply(`${emotes.deny} I am currently only available to testers. Interested? DM <@${devs.join('> <@')}>.`);
         }
 

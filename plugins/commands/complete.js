@@ -141,6 +141,16 @@ exports.onCall = (interaction, data, generated) => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
                     }
+
+                    database.query(
+                        "INSERT INTO `transactions` (`userid`, `type`, `amountCoins`, `aiIn`, `aiOut`, `timestamp`) VALUES (?, 'cmd', ?, ?, ?, ?)", 
+                        [interaction.user.id, total, snippet, response.trim(), Date.now()], 
+                        err => {
+                            if (err) {
+                                console.log(err);
+                                interaction.channel.send(`${emotes.deny} An error occurred while saving your transaction. It won't appear in your history.`);
+                            }
+                    });
                 }).catch(error => {
                     console.error(error);
                     logToServer(`Failed to process snippet for ${interaction.user.tag} (${interaction.user.id}):\nInput: ${snippet}\n${error.stack}`);
