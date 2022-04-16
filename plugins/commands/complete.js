@@ -11,7 +11,7 @@ exports.structure = {
     }]
 }
 
-exports.onCall = (interaction, data) => {
+exports.onCall = (interaction, data, generated) => {
     if (data.tokens < 1) {
         return interaction.reply(noTokens());
     }
@@ -77,7 +77,13 @@ exports.onCall = (interaction, data) => {
                     data.lastTokensUsed = total;
                     data.lastAskedTimestamp = Date.now();
 
-                    let query = `UPDATE \`users\` SET \`tokens\` = ${data.tokens}, \`spentTokens\` = ${data.spentTokens}, \`totalTokens\` = ${data.totalTokens}, \`lastAskedTimestamp\` = ${data.lastAskedTimestamp}, \`lastTokensUsed\` = ${data.lastTokensUsed}`;
+                    let changed = {
+                        tokens: data.tokens,
+                        spentTokens: data.spentTokens,
+                        totalTokens: data.totalTokens,
+                        lastAskedTimestamp: data.lastAskedTimestamp,
+                        lastTokensUsed: data.lastTokensUsed
+                    };
     
                     interaction.editReply(response);
                     
@@ -87,10 +93,41 @@ exports.onCall = (interaction, data) => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
 
-                        query += ", `firstTimeDM` = 1";
+                        changed.firstTimeDM = 1;
                     }
 
-                    query += ` WHERE \`userid\` = '${interaction.user.id}'`;
+                    // build query based on changed properties. If generated, it should insert to the database. Otherwise, it should update the database.
+                    let query = generated ? 'INSERT INTO `users` (' : 'UPDATE `users` SET ';
+                    let build = [];
+
+                    if (!generated) {
+                        for (let [key, value] of Object.entries(changed)) {
+                            let b = `\`${key}\` = `;
+                            if (typeof value === 'string') {
+                                b += `'${value}'`;
+                            } else {
+                                b += value.toString();
+                            }
+                            build.push(b);
+                        }
+                        build = build.join(', ');
+                        build += ` WHERE \`userid\` = ${interaction.user.id}`;
+                    } else {
+                        changed.userid = interaction.user.id;
+                        let keys = [];
+                        let values = [];
+                        for (let [key, value] of Object.entries(changed)) {
+                            keys.push(`\`${key}\``);
+
+                            let b = typeof value === "string" ? `'${value}'` : value.toString();
+                            values.push(b);
+                        }
+
+                        build = keys.join(', ') + ') VALUES (' + values.join(', ') + ')';
+                    }
+
+                    query += build;
+
                     database.query(query, err => {
                         if (err) {
                             console.log(err);

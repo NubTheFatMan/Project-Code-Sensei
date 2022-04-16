@@ -14,15 +14,15 @@ global.baseUserData = {
     lastTokensUsed: 0,
     lastAskedTimestamp: 0,
     
-    watchlist: false,
+    watchlist: 0,
     watchlistReason: "",
     watchlistHistory: [],
     
-    blacklist: false,
+    blacklist: 0,
     blacklistReason: "",
     blacklistHistory: [],
     
-    firstTimeDM: false
+    firstTimeDM: 1
 };
 
 global.testerTokenBonus = 45000;

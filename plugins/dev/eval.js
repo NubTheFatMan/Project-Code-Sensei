@@ -15,10 +15,13 @@ let oldLog = console.log;
 
 exports.onCall = (message, args) => {
     if (!args.length) return message.reply(`${emotes.deny} You must provide code to evaluate.`);
+
     let code = args.join(" ").replace('```js', '').replace('```', '');
     console.log = log;
     try {
+        let start = Date.now();
         let result = eval(code);
+        let time = Date.now() - start;
 
         let msgObj = {};
 
@@ -27,23 +30,23 @@ exports.onCall = (message, args) => {
             msgObj.files = [{attachment: buffer, name: "console.txt"}];
         }
 
-        if (result === undefined || result === null) msgObj.content = `${emotes.approve} Evaluated successfully, no output.`;
+        if (result === undefined || result === null) msgObj.content = `${emotes.approve} Evaluated successfully, no output.\n⏱️ Took ${time}ms.`;
         else if (result instanceof Object || result instanceof Array) result = JSON.stringify(result, null, 2);
         else if (typeof result !== "string") result = result !== undefined ? result.toString() : "";
 
         if (!msgObj.content) {
-            if (result.length > 1990) {
+            if (result.length > 1900) {
                 let buffer = Buffer.from(
                     result.replace(process.env.OPENAI_API_KEY, 'HIDDEN')
                     .replace(process.env.DISCORD_BOT_TOKEN, "HIDDEN")
                     .replace(process.env.TEST_BOT_TOKEN, "HIDDEN")
                 );
-                msgObj.content = `${emotes.approve} Evaluated without error.`;
+                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took ${time}ms.`;
 
                 if (!msgObj.files) msgObj.files = [{attachment: buffer, name: "result.txt"}];
                 else msgObj.files.push({attachment: buffer, name: "result.txt"});
             } else {
-                msgObj.content = `${emotes.approve} Evaluated without error.\`\`\`\n${result}\`\`\``;
+                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took ${time}ms.\`\`\`\n${result}\`\`\``;
             }
         }
 
@@ -53,7 +56,7 @@ exports.onCall = (message, args) => {
             .replace(process.env.TEST_BOT_TOKEN, "HIDDEN");
 
         message.reply(msgObj).catch(err => {
-            message.reply(`${emotes.deny} Output too large but unable to attach file. Evaluated without error.\n\`${err.toString().replace('DiscordAPIError: ', '')}\``).catch(console.error);
+            message.reply(`${emotes.deny} Output too large but unable to attach file. Evaluated without error.\n⏱️ Took ${time}ms.\n\`${err.toString().replace('DiscordAPIError: ', '')}\``).catch(console.error);
         });
     } catch (err) {
         message.reply(`${emotes.deny} An error occured while evaluating that code.\`\`\`\n${err.stack}\`\`\``).catch(console.error);

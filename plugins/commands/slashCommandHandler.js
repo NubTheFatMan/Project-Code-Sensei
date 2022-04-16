@@ -4,13 +4,18 @@ client.on('interactionCreate', interaction => {
     database.query(`SELECT * FROM \`users\` WHERE \`userid\` = '${interaction.user.id}'`, (err, result) => {
         if (err) throw err;
 
+        let data;
         if (result.length === 0) {
-            database.query(`INSERT INTO \`users\` (\`userid\`) VALUES ('${interaction.user.id}')`, err => {
-                if (err) throw err;
-            });
-        }
+            data = {};
+            Object.assign(data, baseUserData);
 
-        let data = result[0];
+            if (testers.includes(interaction.user.id)) 
+                data.tokens += testerTokenBonus;
+            if (devs.includes(interaction.user.id)) 
+                data.tokens += devTokenBonus;
+        } else {
+            data = result[0];
+        }
 
         if (data.blacklisted) return interaction.reply(`${emotes.deny} You are blacklisted from using commands.`);
 
@@ -23,7 +28,7 @@ client.on('interactionCreate', interaction => {
         for (let cmd of commands.values()) {
             if (cmd.structure.name === interaction.commandName) {
                 try {
-                    cmd.onCall(interaction, data);
+                    cmd.onCall(interaction, data, result.length === 0); // Third argument is true if the user is new, "generated"
                     ran = true;
                 } catch (err) {
                     console.error(err);
