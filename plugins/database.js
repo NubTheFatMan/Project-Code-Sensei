@@ -10,3 +10,8 @@ database.connect(err => {
     if (err) 
         throw err;
 });
+
+// To prevent the database timing out from idle, we'll just ping it every 10 minutes
+setInterval(() => {
+    database.query("SELECT 1");
+}, 600000);

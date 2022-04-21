@@ -1,4 +1,6 @@
-let startupTime = Date.now();
+global.Stopwatch = require('@sapphire/stopwatch').Stopwatch;
+
+let startupTime = new Stopwatch();
 global.initTime = null;
 
 global.testMode = false;
@@ -46,9 +48,9 @@ global.applyGlobalCommands = () => {
 client.on('ready', () => {
     applyGlobalCommands();
     
-    initTime = Date.now() - startupTime;
-    console.log(`Connected to Discord! Took ${initTime}ms`);
-    logToServer(`Connected to Discord! Took ${initTime}ms`);
+    initTime = startupTime.stop().toString();
+    console.log(`Connected to Discord! Took ${initTime}`);
+    logToServer(`Connected to Discord! Took ${initTime}`);
 });
 
 global.loadFile = file => {

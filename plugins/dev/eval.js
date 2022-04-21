@@ -19,9 +19,9 @@ exports.onCall = (message, args) => {
     let code = args.join(" ").replace('```js', '').replace('```', '');
     console.log = log;
     try {
-        let start = Date.now();
+        let start = new Stopwatch();
         let result = eval(code);
-        let time = Date.now() - start;
+        let time = start.stop().toString();
 
         let msgObj = {};
 
@@ -30,7 +30,7 @@ exports.onCall = (message, args) => {
             msgObj.files = [{attachment: buffer, name: "console.txt"}];
         }
 
-        if (result === undefined || result === null) msgObj.content = `${emotes.approve} Evaluated successfully, no output.\n⏱️ Took ${time}ms.`;
+        if (result === undefined || result === null) msgObj.content = `${emotes.approve} Evaluated successfully, no output.\n⏱️ Took \`${time}\``;
         else if (result instanceof Object || result instanceof Array) result = JSON.stringify(result, null, 2);
         else if (typeof result !== "string") result = result !== undefined ? result.toString() : "";
 

@@ -7,9 +7,15 @@ exports.onCall = (message, args) => {
     let target = args.shift();
     let amount = args.shift();
 
-    let data = getUserData(target);
+    database.query(`SELECT * FROM \`users\` WHERE \`userid\` = '${target}'`, (err, result) => {
+        if (err) 
+            return message.reply(`${emotes.deny} An error occured while executing that command.\`\`\`\n${err.stack}\`\`\``);
 
-    if (data) {
+        if (result.length === 0) 
+            return message.reply(`${emotes.deny} That user does not exist in the database.`);
+
+        let data = result[0];
+
         let method = amount[0];
         
         amount = Number(validMethods.includes(method) ? amount.slice(1) : amount);
@@ -43,13 +49,12 @@ exports.onCall = (message, args) => {
                 data.tokens = amount;
             } break;
         }
-        
-        if (!userData.has(target)) {
-            userData.set(target, data);
-        }
 
-        saveUser(target);
+        database.query(`UPDATE \`users\` SET \`tokens\` = '${data.tokens}', \`spentTokens\` = '${data.spentTokens}', \`totalTokens\` = '${data.totalTokens}' WHERE \`userid\` = '${target}'`, (err, result) => {    
+            if (err)
+                return message.reply(`${emotes.deny} An error occured while saving user to database.\`\`\`\n${err.stack}\`\`\``);
+        });
 
         message.reply(`${emotes.approve} User now has **${data.tokens}** tokens!`);
-    }
+    });
 }

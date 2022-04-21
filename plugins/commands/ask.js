@@ -1,7 +1,7 @@
 exports.type = "command";
 
 exports.structure = {
-    name: "complete",
+    name: "ask",
     description: "Code Sensei will complete the snippet you provide. Great for asking questions.",
     options: [{
         name: "snippet",
