@@ -41,12 +41,12 @@ exports.onCall = (message, args) => {
                     .replace(process.env.DISCORD_BOT_TOKEN, "HIDDEN")
                     .replace(process.env.TEST_BOT_TOKEN, "HIDDEN")
                 );
-                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took ${time}ms.`;
+                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took \`${time}\`.`;
 
                 if (!msgObj.files) msgObj.files = [{attachment: buffer, name: "result.txt"}];
                 else msgObj.files.push({attachment: buffer, name: "result.txt"});
             } else {
-                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took ${time}ms.\`\`\`\n${result}\`\`\``;
+                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took \`${time}\`.\`\`\`\n${result}\`\`\``;
             }
         }
 
@@ -56,7 +56,7 @@ exports.onCall = (message, args) => {
             .replace(process.env.TEST_BOT_TOKEN, "HIDDEN");
 
         message.reply(msgObj).catch(err => {
-            message.reply(`${emotes.deny} Output too large but unable to attach file. Evaluated without error.\n⏱️ Took ${time}ms.\n\`${err.toString().replace('DiscordAPIError: ', '')}\``).catch(console.error);
+            message.reply(`${emotes.deny} Output too large but unable to attach file. Evaluated without error.\n⏱️ Took \`${time}\`.\n\`${err.toString().replace('DiscordAPIError: ', '')}\``).catch(console.error);
         });
     } catch (err) {
         message.reply(`${emotes.deny} An error occured while evaluating that code.\`\`\`\n${err.stack}\`\`\``).catch(console.error);
