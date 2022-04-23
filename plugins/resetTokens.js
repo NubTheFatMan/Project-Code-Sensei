@@ -2,43 +2,40 @@ setInterval(() => {
     if (Date.now() >= resetTime.getTime()) {
         resetTime.setMonth(resetTime.getMonth() + 1);
 
-        fs.readdir("./config/users", (err, files) => {
-            if (err) console.error(err);
-            else {
-                for (let file of files) {
-                    let id = file.slice(0, -5); // remove .json
+        database.query('SELECT * FROM `users`', (err, rows) => {
+            for (let i = 0; i < rows.length; i++) {
+                let data = rows[i];
 
-                    let data;
-                    if (userData.has(id)) {
-                        data = userData.get(id);
-                    } else {
-                        data = JSON.parse(fs.readFileSync(`./config/users/${file}`));
-                    }
-                    
-                    let minTokens = baseUserData.tokens;
-                    if (testers.includes(id)) minTokens += testerTokenBonus;
-                    if (devs.includes(id)) minTokens += devTokenBonus;
+                let minTokens = baseUserData.tokens;
+                if (testers.includes(data.userid)) minTokens += testerTokenBonus;
+                if (devs.includes(data.userid)) minTokens += devTokenBonus;
 
-                    if (data.tokens < minTokens) {
-                        let credited = minTokens - data.tokens;
-                        data.tokens = minTokens;
-                        data.totalTokens += credited;
+                if (data.tokens < minTokens) {
+                    let credited = minTokens - data.tokens;
+                    data.tokens = minTokens;
+                    data.totalTokens += credited;
 
-                        client.users.fetch(id).then(user => {
-                            user.send(`${emotes.approve} New month, more tokens! You have been credited **${credited}** tokens, you now have **${data.tokens}**.`).catch(console.error);
-                        }).catch(console.error);
+                    database.query(`UPDATE \`users\` SET \`tokens\` = ${data.tokens}, \`totalTokens\` = ${data.totalTokens} WHERE \`userid\` = ${data.userid}`, err => {
+                        if (err) {
+                            logToServer(`[ERROR] An error occurred while resetting coins for user ${data.userid}\n${err}`);
+                            client.users.fetch(data.userid).then(user => {
+                                user.send(`${emotes.deny} An error occurred while resetting your coins. Developers have already been contacted.`).catch(console.error);
+                            }).catch(console.error);
 
-                        if (userData.has(id)) {
-                            saveUser(id);
+                            for (let x = 0; x < devs.length; x++) {
+                                client.users.fetch(devs[x]).then(user => {
+                                    user.send(`${emotes.deny} An error occurred while resetting coins for user ${data.userid}\n${err}`).catch(console.error);
+                                }).catch(console.error);
+                            }
                         } else {
-                            fs.writeFile(`./config/users/${file}`, JSON.stringify(data), err => {
-                                if (err) console.error(err);
-                            });
+                            client.users.fetch(data.userid).then(user => {
+                                user.send(`${emotes.approve} New month, more coins! You have been credited **${tokensToCoins(credited)}** ${emotes.coin}, you now have **${tokensToCoins(data.tokens)}** ${emotes.coin}.`).catch(console.error);
+                            }).catch(console.error);
                         }
-                    }
-                    
+                    });
                 }
             }
         });
+
     }
 }, 60000);

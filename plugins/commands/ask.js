@@ -48,7 +48,7 @@ exports.onCall = (interaction, data, generated) => {
             let filter = contentFilterCheck(response.data);
 
             if (filter > 0) {
-                interaction.editReply(`${emotes.deny} Your snippet has been flagged as inappropriate, and won't be completed.`);
+                interaction.editReply(`${emotes.deny} Your snippet has been flagged as inappropriate and won't be completed. Coins have not been deducted.`);
             } else {
                 let prompt = `${aiBehavior}\n\nUser: ${snippet}\nCode Sensei:`;
                 openai.createCompletion("text-davinci-002", {
