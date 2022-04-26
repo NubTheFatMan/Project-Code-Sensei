@@ -22,7 +22,7 @@ global.baseUserData = {
     blacklistReason: "",
     blacklistHistory: [],
     
-    firstTimeDM: 1
+    firstTimeDM: 0
 };
 
 global.testerTokenBonus = 45000;

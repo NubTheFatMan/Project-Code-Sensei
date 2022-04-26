@@ -43,14 +43,16 @@ exports.onCall = (message, args) => {
 
                 data.spentTokens = 0;
                 data.totalTokens = data.tokens;
+                data.lastTokensUsed = 0;
             } break;
 
             default: {
                 data.tokens = amount;
+                data.totalTokens = amount + data.spentTokens;
             } break;
         }
 
-        database.query(`UPDATE \`users\` SET \`tokens\` = '${data.tokens}', \`spentTokens\` = '${data.spentTokens}', \`totalTokens\` = '${data.totalTokens}' WHERE \`userid\` = '${target}'`, (err, result) => {    
+        database.query(`UPDATE \`users\` SET \`tokens\` = '${data.tokens}', \`spentTokens\` = '${data.spentTokens}', \`totalTokens\` = '${data.totalTokens}' WHERE \`userid\` = '${target}'`, err => {    
             if (err)
                 return message.reply(`${emotes.deny} An error occured while saving user to database.\`\`\`\n${err.stack}\`\`\``);
         });

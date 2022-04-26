@@ -11,10 +11,10 @@ client.on('interactionCreate', interaction => {
 
             if (testers.includes(interaction.user.id)) 
                 data.tokens += testerTokenBonus;
-                data.totalTokens += testerTokenBonus;
             if (devs.includes(interaction.user.id)) 
                 data.tokens += devTokenBonus;
-                data.totalTokens += devTokenBonus;
+
+            data.totalTokens = data.tokens;
         } else {
             data = result[0];
         }
