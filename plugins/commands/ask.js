@@ -4,7 +4,7 @@ exports.structure = {
     name: "ask",
     description: "Code Sensei will complete the snippet you provide. Great for asking questions.",
     options: [{
-        name: "snippet",
+        name: "question",
         description: "The snippet to complete. Can't exceed 1000 characters in length.",
         type: 3,
         required: true
@@ -22,7 +22,7 @@ exports.onCall = (interaction, data, generated) => {
         return;
     }
 
-    let snippet = interaction.options.get("snippet");
+    let snippet = interaction.options.get("question");
     if (!snippet) {
         interaction.reply(`${emotes.deny} You must provide a snippet to complete!`);
         return;
@@ -49,6 +49,83 @@ exports.onCall = (interaction, data, generated) => {
 
             if (filter > 0) {
                 interaction.editReply(`${emotes.deny} Your snippet has been flagged as inappropriate and won't be completed. Coins have not been deducted.`);
+
+                if (data.updatesChannel && data.onWatchlist) {
+                    client.channels.fetch(data.updatesChannel).then(channel => {
+                        channel.send(`${emotes.deny} ${interaction.user.tag} has triggered the content filter.\n\nInput: ${snippet}`).catch(logToServer);
+                    }).catch(logToServer);
+                }
+
+                // Using the lastAskedTimestamp, remove 1 from cft for every hour passed
+                let timeDiff = interaction.createdTimestamp - data.lastAskedTimestamp;
+                let hours = Math.floor(timeDiff / (1000 * 60 * 60));
+                let cft = Math.max(0, data.cft - hours);
+                
+                cft++;
+
+                if (cft >= 3 && !data.onWatchlist) {
+                    let msg = `${emotes.information} Due to repeated content filter triggers, you have been added to a watchlist. Any further questions you ask will be monitored by a developer.\nIf you continue to trigger the content filter, you will be blacklisted until a developer has a chance to review your account.\nIf this was a mistake, you will be removed from the blacklist.`;
+
+                    interaction.user.send(msg).catch(() => {
+                        interaction.channel.send(msg).catch(() => {});
+                    });
+
+                    client.channels.fetch(process.env.WATCHLIST_CATEGORY).then(category => {
+                        category.createChannel(`${interaction.user.id}`).then(channel => {
+                            channel.send(`User **${interaction.user.tag}** (${interaction.user.id}) <@${interaction.user.id}> has been added to the watchlist for repeatedly triggering the content filter.\nLatest input trigger: ${snippet}`).then(msg => {
+                                msg.pin().catch(() => {
+                                    channel.send(`${emotes.deny} I was unable to pin the message.`);
+                                });
+                            }).catch(logToServer);
+
+                            database.query(
+                                "UPDATE `users` SET `onWatchlist` = 1, `watchlistReason` = 'Content Filter Trigger', `cft` = ?, `lastAskedTimestamp` = ?, `updatesChannel` = ? WHERE `userid` = ?", 
+                                [cft, interaction.createdTimestamp, channel.id.toString(), interaction.user.id.toString()]
+                            );
+                        }).catch(logToServer);
+                    }).catch(logToServer);
+
+                    database.query(
+                        'INSERT INTO `restrictionHistory` (`userid`, reason, timestamp, type) VALUES (?, ?, ?, 0)', 
+                        [interaction.user.id.toString(), `Content filter trigger`, interaction.createdTimestamp]
+                    );
+                } else if (cft >= 5 && data.onWatchlist) {
+                    // Since they have been warned but continue, blacklist them
+                    database.query(
+                        'UPDATE `users` SET `blacklisted` = 1, `blacklistReason` = \'Content Filter Trigger\', `cft` = ?, `lastAskedTimestamp` = ?, WHERE `userid` = ?', 
+                        [cft, interaction.createdTimestamp, interaction.user.id.toString()]
+                    );
+
+                    let msg = `${emotes.deny} You have been blacklisted until a developer has a chance to review your account. If this was a mistake, you will be removed from the blacklist.`;
+
+                    interaction.user.send(msg).catch(() => {
+                        interaction.channel.send(msg).catch(() => {});
+                    });
+
+                    if (data.updatesChannel) {
+                        client.channels.fetch(data.updatesChannel).then(channel => {
+                            channel.send(`User **${interaction.user.tag}** (${interaction.user.id}) <@${interaction.user.id}> has been blacklisted for repeatedly triggering the content filter.\nLatest input trigger: ${snippet}`).catch(logToServer);
+                        }).catch(logToServer);
+                    }
+
+                    database.query(
+                        'INSERT INTO `restrictionHistory` (`userid`, reason, timestamp, type) VALUES (?, ?, ?, 1)', 
+                        [interaction.user.id.toString(), `Content filter trigger`, interaction.createdTimestamp]
+                    );
+                } else {
+                    let query = generated ?
+                        'INSERT INTO `users` (`cft`, `timestamp`, `userid`) VALUES (?, ?, ?)' : 
+                        'UPDATE `users` SET `cft` = ?, `timestamp` = ? WHERE `userid` = ?';
+
+                    let queryArray = [cft, interaction.createdTimestamp, interaction.user.id.toString()];
+
+                    database.query(query, queryArray);
+                }
+
+                database.query(
+                    'INSERT INTO `contentFilterTriggers` (`userid`, `input`, `timestamp`) VALUES (?, ?, ?)',
+                    [interaction.user.id.toString(), snippet, interaction.createdTimestamp]
+                );
             } else {
                 let prompt = `${aiBehavior}\n\nUser: ${snippet}\nCode Sensei:`;
                 openai.createCompletion("text-davinci-002", {
@@ -86,13 +163,25 @@ exports.onCall = (interaction, data, generated) => {
                     };
     
                     interaction.editReply(response);
+
+                    if (beforeTokens >= 1000 && data.tokens < 1000) {
+                        let embed = new Discord.MessageEmbed();
+                        embed.setTitle("Running low on coins!");
+                        embed.setDescription(`You are running low on coins. You currently have ${emotes.coin} ${tokensToCoins(data.tokens)}. If you would like more now, visit [the shop](${tokenShop}) to buy more. Otherwise, your coins will be reset <t:${Math.round(resetTime.getTime() / 1000)}:R>!`);
+                        embed.setColor(0xff9e3d);
+
+                        interaction.user.send({embeds: [embed]}).catch(() => {
+                            interaction.channel.send({content: `Looks like you have DMs disabled!`, embeds: [embed]});
+                        });
+                    }
                     
-                    if (!data.firstTimeDM) {
-                        let msg = `Thank you for using Code Sensei!\nIn case you weren't aware, Code Sensei is a chatbot powered by OpenAI that is designed to help you with math, coding, or computer science related questions. Code Sensei is not perfect, and will sometimes decline to answer questions it thinks aren't related to the topics stated before, when it may actually be.\n\nThe question you asked, "${snippet}" used ${emotes.coin} ${tokensToCoins(total)} of your ${emotes.coin} ${tokensToCoins(beforeTokens)} Sense Coins, you now have ${emotes.coin} __${tokensToCoins(data.tokens)}__ coins remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, with the exception of letting you know that you're running low. You can always use \`/balance\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from [link not available yet]`;
+                    if (data.firstTimeDM != 1) {
+                        let msg = `Thank you for using Code Sensei!\nIn case you weren't aware, Code Sensei is a chatbot powered by OpenAI that is designed to help you with math, coding, or computer science related questions. Code Sensei is not perfect, and will sometimes decline to answer questions it thinks aren't related to the topics stated before, when it may actually be.\n\nThe question you asked, "${snippet}" used ${emotes.coin} ${tokensToCoins(total)} of your ${emotes.coin} ${tokensToCoins(beforeTokens)} Sense Coins, you now have ${emotes.coin} __${tokensToCoins(data.tokens)}__ coins remaining. In general, shorter questions use fewer tokens, so be as concise as you can!\nThis is the only time I will message you about this, with the exception of letting you know that you're running low. You can always use \`/balance\` to see how many you have left, or how many were used by your last question.\nYou can find more information about tokens from ${faqPage}`;
                         interaction.user.send(msg).catch(err => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
 
+                        data.firstTimeDM = 1;
                         changed.firstTimeDM = 1;
                     }
 
@@ -136,7 +225,7 @@ exports.onCall = (interaction, data, generated) => {
                     })
 
                     if (credited > 0) {
-                        let msg = `${emotes.information} Oh no! Looks like you ran out of Sense Coins on your last question. You have been credited ${emotes.coin} ${tokensToCoins(credited)} to complete the snippet, and are now left with ${emotes.coin} ${tokensToCoins(data.tokens)} coins. Coins will be reset on <t:${Math.round(resetTime.getTime() / 1000)}>. If you want more coins now, visit [the coin shop](${tokenShop})!`;
+                        let msg = `${emotes.information} Oh no! Looks like you ran out of Sense Coins on your last question. You have been credited ${emotes.coin} ${tokensToCoins(credited)} to complete the snippet, and are now left with ${emotes.coin} ${tokensToCoins(data.tokens)} coins. Coins will be reset on <t:${Math.round(resetTime.getTime() / 1000)}>. If you want more coins now, visit ${tokenShop}`;
                         interaction.user.send(msg).catch(err => {
                             interaction.channel.send(`<@${interaction.user.id}>, Looks like you have DM's disabled! Here is what I wanted to send to you:\n${msg}`);
                         });
@@ -148,9 +237,16 @@ exports.onCall = (interaction, data, generated) => {
                         err => {
                             if (err) {
                                 console.log(err);
+                                logToServer(`Error saving transaction for ${interaction.user.id}\n${err}`);
                                 interaction.channel.send(`${emotes.deny} An error occurred while saving your transaction. It won't appear in your history.`);
                             }
                     });
+
+                    if (data.onWatchlist && data.updatesChannel) {
+                        client.channels.fetch(data.updatesChannel).then(channel => {
+                            channel.send(`${emotes.information} ${interaction.user.tag} has asked a question:\n\nInput: ${snippet}\n\nAI Response: ${string.Trim(response)}`).catch(logToServer)
+                        }).catch(logToServer);
+                    }
                 }).catch(error => {
                     console.error(error);
                     logToServer(`Failed to process snippet for ${interaction.user.tag} (${interaction.user.id}):\nInput: ${snippet}\n${error.stack}`);
@@ -158,7 +254,7 @@ exports.onCall = (interaction, data, generated) => {
                 });
             }
         }).catch(err => {
-            interaction.editReply(`${emotes.deny} Failed to pass your snippet through the content filter!\`\`\`\n${err}\`\`\``);
+            interaction.editReply(`${emotes.deny} Failed to pass your snippet through the content filter!\`\`\`\n${err.stack}\`\`\``);
         });
 
     }).catch(() => {}); // Catch is there so console doesn't say "Uncaught Promise Rejection". Should only run if no message perms
