@@ -14,11 +14,11 @@ global.baseUserData = {
     lastTokensUsed: 0,
     lastAskedTimestamp: 0,
     
-    watchlist: 0,
+    onWatchlist: 0,
     watchlistReason: "",
     watchlistHistory: [],
     
-    blacklist: 0,
+    blacklisted: 0,
     blacklistReason: "",
     blacklistHistory: [],
     
