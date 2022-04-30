@@ -57,12 +57,15 @@ exports.onCall = (interaction, data) => {
                     return interaction.reply("An error occurred while trying to create your card!");
                 }
 
-                let embed = new Discord.MessageEmbed();
-                embed.setColor(0x0096ff);
-                embed.setTitle('How do Sense Coins work?');
-                embed.setDescription(`Check the [FAQ](${faqPage}).\nWant more coins? Visit the [shop](${tokenShop})!`);
+                let row = new Discord.MessageActionRow();
+                row.type = "ACTION_ROW";           
 
-                interaction.reply({files: [{attachment: buffer, name: "sense_card.png"}], embeds: [embed]});
+                let faqLink = new Discord.MessageButton({label: "FAQ", url: faqPage, style: "LINK"});
+                let shopLink = new Discord.MessageButton({label: "Coin Shop", url: tokenShop, style: "LINK"});
+
+                row.setComponents([faqLink, shopLink]);
+
+                interaction.reply({files: [{attachment: buffer, name: "sense_card.png"}], components: [row]});
             });
         });
     });
