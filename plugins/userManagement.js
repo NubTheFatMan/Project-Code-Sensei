@@ -2,6 +2,10 @@ global.tokensToCoins = tokens => {
     return (tokens / 100).toFixed(2);
 }
 
+global.tokensToUSD = coins => {
+    return (coins * (0.06/1000)).toFixed(4);
+};
+
 global.noTokens = () => {
     let embed = new Discord.MessageEmbed();
     embed.setTitle(`${emotes.deny} You don't have enough tokens!`);
