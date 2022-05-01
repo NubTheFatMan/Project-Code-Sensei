@@ -46,7 +46,7 @@ exports.onCall = (message, args) => {
                 if (!msgObj.files) msgObj.files = [{attachment: buffer, name: "result.txt"}];
                 else msgObj.files.push({attachment: buffer, name: "result.txt"});
             } else {
-                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took \`${time}\`\`\`\`\n${result}\`\`\``;
+                msgObj.content = `${emotes.approve} Evaluated without error.\n⏱️ Took \`${time}\`\n\`\`\`\n${result}\`\`\``;
             }
         }
 
